@@ -139,11 +139,11 @@
   var PREFER = /premium|enhanced|natural|neural|google us english|samantha|ava|allison|nicky|zoe|evan|alex|aaron|joelle|noelle|susan/i;
   function englishVoices() {
     if (!("speechSynthesis" in window)) return [];
-    return speechSynthesis.getVoices().filter(function (v) { return /^en[-_]/i.test(v.lang) && !NOVELTY.test(v.name); });
+    return speechSynthesis.getVoices().filter(function (v) { return /^en($|[-_])/i.test(v.lang) && !NOVELTY.test(v.name); });
   }
   function scoreVoice(v) {
     var sc = 0;
-    if (/^en[-_]US$/i.test(v.lang)) sc += 50; else if (/^en[-_]/i.test(v.lang)) sc += 10;
+    if (/^en[-_]US$/i.test(v.lang)) sc += 50; else if (/^en($|[-_])/i.test(v.lang)) sc += 10;
     if (/premium|enhanced|natural|neural/i.test(v.name)) sc += 40;
     if (PREFER.test(v.name)) sc += 20;
     if (!v.localService) sc += 0; // giọng mạng của trình duyệt (vd Google) cũng được chấp nhận
@@ -151,7 +151,10 @@
   }
   function pickVoice() {
     var vs = englishVoices();
-    if (S.voice) { var m = vs.filter(function (v) { return v.name === S.voice; })[0]; if (m) return m; }
+    if (S.voice) {
+      var m = speechSynthesis.getVoices().filter(function (v) { return v.name === S.voice; })[0];
+      if (m) return m;
+    }
     vs.sort(function (a, b) { return scoreVoice(b) - scoreVoice(a); });
     return vs[0] || null;
   }
@@ -159,13 +162,16 @@
     if (!("speechSynthesis" in window)) { toast("Trình duyệt này chưa hỗ trợ giọng đọc."); return; }
     var go = function () {
       var v = pickVoice();
-      if (!v) { toast("Thiết bị chưa có giọng tiếng Anh. Hãy cài giọng English (US) trong cài đặt hệ thống."); return; }
       speechSynthesis.cancel();
-      var u = new SpeechSynthesisUtterance(text); u.voice = v; u.lang = v.lang; u.rate = .85;
+      var u = new SpeechSynthesisUtterance(text); u.rate = .85;
+      if (v) { u.voice = v; u.lang = v.lang; } else { u.lang = "en-US"; } // không có giọng riêng thì để máy tự chọn theo en-US
       speechSynthesis.speak(u);
     };
     if (speechSynthesis.getVoices().length) go();
-    else { speechSynthesis.onvoiceschanged = function () { speechSynthesis.onvoiceschanged = null; go(); }; speechSynthesis.getVoices(); }
+    else {
+      var done = false, fire = function () { if (done) return; done = true; speechSynthesis.onvoiceschanged = null; go(); };
+      speechSynthesis.onvoiceschanged = fire; setTimeout(fire, 500); speechSynthesis.getVoices(); // chờ tối đa 0,5 giây rồi vẫn đọc
+    }
   }
   function pill(st) { return '<span class="pill ' + st[1] + '">' + st[0] + "</span>"; }
 
@@ -556,7 +562,7 @@
       '<div class="card"><h2>Giao diện</h2><div class="field"><span>Chế độ</span><div class="seg"><button data-theme="light" class="' + (th === "light" ? "on" : "") + '" type="button">Sáng</button><button data-theme="dark" class="' + (th === "dark" ? "on" : "") + '" type="button">Tối</button></div></div>' +
         '<p class="muted" style="margin-top:8px">Mặc định theo cài đặt của thiết bị; khi Ngài tự chọn, app sẽ nhớ.</p></div>' +
       '<div class="card"><h2>Giọng đọc tiếng Anh</h2><p class="muted">Chọn giọng nghe tự nhiên nhất trên thiết bị của Ngài (ưu tiên giọng Anh-Mỹ có chữ Premium/Enhanced). App dùng giọng có sẵn của máy, không cần mạng.</p>' +
-        '<div class="field"><select class="input" id="voiceSel" style="width:100%;font-size:16px"></select></div><div class="actions"><button class="btn small" id="voiceTest" type="button">Nghe thử</button></div></div>' +
+        '<div class="field"><select class="input" id="voiceSel" style="width:100%;font-size:16px"></select></div><p class="muted" id="voiceNote" style="margin-top:8px"></p><div class="actions"><button class="btn small" id="voiceTest" type="button">Nghe thử</button></div></div>' +
       '<div class="card"><h2>Sao lưu tiến độ</h2><p class="muted">Tiến độ chỉ lưu trên thiết bị này. Xuất file để chuyển sang máy khác hoặc phòng khi xóa dữ liệu trình duyệt.</p>' +
         '<div class="actions"><button class="btn" id="exp" type="button">Xuất file sao lưu</button><label class="btn ghost" style="cursor:pointer">Nhập file<input id="imp" type="file" accept="application/json" hidden></label></div></div>' +
       '<div class="card"><h2>Câu bị báo sai</h2><p class="muted">Đã ghi nhận ' + S.reports.length + ' câu. Danh sách này nằm trong file sao lưu để Đầy tớ xem lại và sửa nội dung.</p></div>' +
@@ -567,16 +573,36 @@
       var v = Math.max(3, Math.min(100, parseInt(e.target.value, 10) || 10)); S.goal = v; e.target.value = v; save(); toast("Đã đặt mục tiêu " + v + " mục mỗi ngày.");
     });
     document.querySelectorAll("[data-theme]").forEach(function (b) { b.addEventListener("click", function () { setTheme(b.getAttribute("data-theme")); route(); }); });
+    // Danh sách giọng trên điện thoại thường nạp chậm hoặc báo nhiều lần. Chỉ vẽ lại khi danh sách thật sự đổi,
+    // để không đóng bảng chọn của hệ điều hành đúng lúc Ngài đang chọn.
+    var lastSig = null;
     var fillVoices = function () {
-      var sel = $("#voiceSel"); if (!sel) return;
-      var vs = englishVoices().sort(function (a, b) { return scoreVoice(b) - scoreVoice(a); }), cur = pickVoice();
+      var sel = $("#voiceSel"); if (!sel) return false;
+      var all = "speechSynthesis" in window ? speechSynthesis.getVoices() : [];
+      var vs = englishVoices(), usingAll = false;
+      if (!vs.length && all.length) { vs = all.slice(); usingAll = true; } // máy không gắn nhãn tiếng Anh: vẫn cho chọn
+      vs.sort(function (a, b) { return scoreVoice(b) - scoreVoice(a); });
+      var cur = usingAll ? (S.voice ? all.filter(function (v) { return v.name === S.voice; })[0] : null) : pickVoice();
+      var sig = vs.map(function (v) { return v.name; }).join("|") + "#" + (S.voice || "") + "#" + usingAll;
+      var note = $("#voiceNote");
+      if (sig === lastSig) return vs.length > 0;
+      lastSig = sig;
       sel.innerHTML = vs.length ? vs.map(function (v) {
         return '<option value="' + esc(v.name) + '"' + (cur && cur.name === v.name ? " selected" : "") + ">" + esc(v.name) + " (" + esc(v.lang) + ")</option>";
-      }).join("") : '<option value="">Chưa tìm thấy giọng tiếng Anh trên thiết bị</option>';
+      }).join("") : '<option value="">Đang tìm giọng đọc trên thiết bị…</option>';
+      if (note) note.textContent = !vs.length ? "Thiết bị chưa báo danh sách giọng. Nếu chờ vài giây vẫn trống, nút nghe vẫn đọc bằng giọng mặc định của máy."
+        : usingAll ? "Máy chưa gắn nhãn tiếng Anh cho giọng nào, nên đây là toàn bộ giọng có sẵn. Hãy chọn giọng tiếng Anh rồi bấm Nghe thử." : "";
+      return vs.length > 0;
     };
     fillVoices();
-    if ("speechSynthesis" in window) speechSynthesis.onvoiceschanged = fillVoices;
-    $("#voiceSel").addEventListener("change", function (e) { S.voice = e.target.value || null; save(); });
+    if ("speechSynthesis" in window) {
+      speechSynthesis.onvoiceschanged = fillVoices;
+      var tries = 0, timer = setInterval(function () { // iPhone và Android có thể không báo sự kiện, nên hỏi lại vài giây đầu
+        if (!$("#voiceSel") || ++tries > 20) { clearInterval(timer); return; }
+        fillVoices();
+      }, 300);
+    }
+    $("#voiceSel").addEventListener("change", function (e) { S.voice = e.target.value || null; save(); toast("Đã chọn giọng: " + (e.target.value || "mặc định")); });
     $("#voiceTest").addEventListener("click", function () { speak("Hello! I am happy to learn English with you."); });
     $("#exp").addEventListener("click", exportData);
     $("#imp").addEventListener("change", function (e) { if (e.target.files[0]) importData(e.target.files[0]); });

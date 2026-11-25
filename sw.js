@@ -1,5 +1,5 @@
 /* Service worker: lưu file app để dùng được khi mất mạng. */
-const CACHE = "nrcdtc-v4";
+const CACHE = "nrcdtc-v5";
 const FILES = [
   "./", "index.html", "styles.css", "app.js", "manifest.webmanifest", "icon.svg",
   "data/grammar-to-be.js",
@@ -46,7 +46,7 @@ self.addEventListener("activate", (e) => {
 self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET") return;
   e.respondWith(
-    fetch(e.request)
+    fetch(e.request, { cache: "no-cache" }) // luôn hỏi lại máy chủ, tránh giữ file cũ sau khi cập nhật
       .then((res) => {
         const copy = res.clone();
         caches.open(CACHE).then((c) => c.put(e.request, copy));
