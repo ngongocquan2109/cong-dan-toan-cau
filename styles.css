@@ -47,7 +47,7 @@ p { margin: 0; }
 .avatar { width: 38px; height: 38px; border-radius: 50%; background: #fff; border: 1px solid var(--line); object-fit: cover; flex: none; }
 .avatar.big { width: 64px; height: 64px; box-shadow: var(--shadow); }
 .hello { display: flex; align-items: center; gap: 14px; }
-.hello h1 { line-height: 1.15; }
+.hello h1 { line-height: 1.15; font-size: clamp(24px, 2.6vw, 34px); }
 .brandtext { display: flex; flex-direction: column; line-height: 1.1; }
 .brandtext small { color: var(--muted); font-weight: 500; font-size: 12px; }
 .pillnav {
@@ -79,7 +79,7 @@ main { max-width: 1180px; margin: 0 auto; padding: 14px 20px 60px; }
   box-shadow: var(--shadow); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
 }
 .grid { display: grid; gap: 16px; }
-.hero { grid-template-columns: 1.7fr 1fr; margin-top: 8px; }
+.hero { grid-template-columns: 1.5fr 1fr 1fr; margin-top: 8px; }
 .two { grid-template-columns: 1.4fr 1fr; margin-top: 16px; }
 .cols3 { grid-template-columns: repeat(3, 1fr); }
 .stats3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 18px 0 16px; }
@@ -94,6 +94,15 @@ main { max-width: 1180px; margin: 0 auto; padding: 14px 20px 60px; }
 .heroR { background: var(--dark); color: #eef2f8; border-color: transparent; }
 .heroR .lbl, .heroR .muted { color: #9aa6ba; }
 .heroR .big small { color: #9aa6ba; }
+
+/* Đồng hồ kim */
+.clockcard { background: var(--dark); color: #eef2f8; border-color: transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; }
+.clk { width: min(100%, 230px); height: auto; aspect-ratio: 1; filter: drop-shadow(0 6px 18px rgba(0, 0, 0, .35)); }
+.clkdig { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.clkdig b { font-size: 30px; font-weight: 600; letter-spacing: .02em; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.clkdig span { color: #9aa6ba; font-size: 13px; }
+.clkdig .clkp { color: var(--lime); font-weight: 600; }
+@media (max-width: 1000px) and (min-width: 761px) { .hero { grid-template-columns: 1fr 1fr; } .hero > :first-child { grid-column: 1 / -1; } }
 
 /* Buttons */
 .btn {

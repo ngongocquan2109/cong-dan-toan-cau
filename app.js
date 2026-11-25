@@ -498,6 +498,7 @@
           '<p class="muted">Còn ' + toNext + ' XP để lên cấp ' + (level + 1) + '</p>' +
           '<div style="margin-top:18px"><span class="lbl">Cần ôn hôm nay</span><div class="big">' + due + '<small> mục</small></div></div>' +
           '<div class="actions"><a class="btn" href="#/review">' + (due ? "Ôn ngay" : "Xem mục ôn tập") + "</a></div></div>" +
+        clockCard(d.done, g) +
       "</section>" +
       '<section class="card" style="margin-top:16px"><h2>Lộ trình CEFR</h2><p class="muted">Số bài ngữ pháp đã vững và số sao theo từng bậc.</p>' + ["A1", "A2", "B1"].map(function (c) {
         var n = GR.filter(function (x) { return x.cefr === c; }), dn = n.filter(gDone).length, st = n.reduce(function (a, t) { return a + stars(t); }, 0);
@@ -520,6 +521,49 @@
           '<h3 style="margin-top:20px">Huy hiệu</h3><div class="badges">' + bdg + "</div></div>" +
       "</section>";
   }
+  /* ---------- Đồng hồ kim ở Tổng quan, vòng cung quanh mặt là tiến độ hôm nay ---------- */
+  var DAYS_FULL = ["Chủ nhật", "Thứ hai", "Thứ ba", "Thứ tư", "Thứ năm", "Thứ sáu", "Thứ bảy"];
+  var clockRaf = null, clockTimer = null;
+  function clockCard(done, goal) {
+    var p = Math.max(0, Math.min(1, goal ? done / goal : 0)), R = 92, C = 2 * Math.PI * R, ticks = "";
+    for (var i = 0; i < 60; i++) {
+      var hour = i % 5 === 0, a = i * 6 * Math.PI / 180, r1 = 80, r2 = hour ? 71 : 75;
+      var x1 = 100 + r1 * Math.sin(a), y1 = 100 - r1 * Math.cos(a), x2 = 100 + r2 * Math.sin(a), y2 = 100 - r2 * Math.cos(a);
+      ticks += '<line x1="' + x1.toFixed(2) + '" y1="' + y1.toFixed(2) + '" x2="' + x2.toFixed(2) + '" y2="' + y2.toFixed(2) + '" stroke="' + (i === 0 ? "#dcf84a" : hour ? "#eef2f8" : "rgba(238,242,248,.35)") + '" stroke-width="' + (hour ? 2.4 : 1) + '" stroke-linecap="round"/>';
+    }
+    return '<div class="card clockcard"><svg class="clk" viewBox="0 0 200 200" role="img" aria-label="Đồng hồ kim. Tiến độ hôm nay ' + done + " trên " + goal + ' mục">' +
+      '<circle cx="100" cy="100" r="98" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.08)"/>' +
+      '<circle cx="100" cy="100" r="' + R + '" fill="none" stroke="rgba(255,255,255,.10)" stroke-width="3"/>' +
+      '<circle cx="100" cy="100" r="' + R + '" fill="none" stroke="#dcf84a" stroke-width="3" stroke-linecap="round" stroke-dasharray="' + (C * p).toFixed(1) + " " + C.toFixed(1) + '" transform="rotate(-90 100 100)"/>' +
+      ticks +
+      '<g id="clkH"><line x1="100" y1="108" x2="100" y2="58" stroke="#eef2f8" stroke-width="5" stroke-linecap="round"/></g>' +
+      '<g id="clkM"><line x1="100" y1="110" x2="100" y2="38" stroke="#eef2f8" stroke-width="3.2" stroke-linecap="round"/></g>' +
+      '<g id="clkS"><line x1="100" y1="116" x2="100" y2="30" stroke="#dcf84a" stroke-width="1.6" stroke-linecap="round"/></g>' +
+      '<circle cx="100" cy="100" r="5.5" fill="#dcf84a"/><circle cx="100" cy="100" r="2" fill="#14171c"/></svg>' +
+      '<div class="clkdig"><b id="clkT">--:--</b><span id="clkD"></span><span class="clkp">Hôm nay ' + done + " / " + goal + " mục</span></div></div>";
+  }
+  function startClock() {
+    if (clockRaf) { cancelAnimationFrame(clockRaf); clockRaf = null; }
+    if (clockTimer) { clearInterval(clockTimer); clockTimer = null; }
+    var H = $("#clkH"), M = $("#clkM"), S_ = $("#clkS"), T = $("#clkT"), D = $("#clkD"); if (!H) return;
+    var reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches, lastMin = -1;
+    var rot = function (g, deg) { g.setAttribute("transform", "rotate(" + deg.toFixed(2) + " 100 100)"); };
+    function stop() { if (clockRaf) cancelAnimationFrame(clockRaf); clockRaf = null; if (clockTimer) clearInterval(clockTimer); clockTimer = null; }
+    function tick() {
+      if (!document.getElementById("clkH")) { stop(); return false; } // đã rời trang Tổng quan thì dừng
+      var n = new Date(), ms = n.getMilliseconds(), sec = n.getSeconds() + (reduce ? 0 : ms / 1000), min = n.getMinutes() + sec / 60, hr = (n.getHours() % 12) + min / 60;
+      rot(S_, sec * 6); rot(M, min * 6); rot(H, hr * 30);
+      if (n.getMinutes() !== lastMin) {
+        lastMin = n.getMinutes();
+        T.textContent = pad(n.getHours()) + ":" + pad(n.getMinutes());
+        D.textContent = DAYS_FULL[n.getDay()] + ", " + pad(n.getDate()) + "/" + pad(n.getMonth() + 1);
+      }
+      return true;
+    }
+    function frame() { if (tick()) clockRaf = requestAnimationFrame(frame); }
+    frame();
+    clockTimer = setInterval(tick, 250); // dự phòng khi trình duyệt giảm tốc khung hình
+  }
   function placementCard() {
     var P = S.placement; if (!P || P.gl === undefined) return "";
     var H = S.placeHist || [], last = H[H.length - 1], prev = H[H.length - 2];
@@ -532,6 +576,7 @@
       '<div class="actions"><a class="btn small ghost" href="#/placement">Làm lại</a></div></section>';
   }
   function bindDashboard() {
+    startClock();
     document.querySelectorAll("[data-sel]").forEach(function (el) {
       el.addEventListener("click", function () { dashSel = el.getAttribute("data-sel"); $("#view").innerHTML = viewDashboard(); bindDashboard(); });
     });
