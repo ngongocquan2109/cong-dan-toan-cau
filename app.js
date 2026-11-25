@@ -487,7 +487,7 @@
 
     return '' +
       '<section class="grid hero">' +
-        '<div class="card"><p class="eyebrow">Hôm nay · ' + k + '</p><h1>Xin chào, Ngài Richard</h1>' +
+        '<div class="card"><div class="hello"><img class="avatar big" src="icons/avatar-160.png" alt="" width="64" height="64"><div><p class="eyebrow">Hôm nay · ' + k + '</p><h1>Xin chào, Ngài Richard</h1></div></div>' +
           '<div class="stats3">' +
             '<div><span class="lbl">Streak</span><div class="big">' + st + '<small> ngày</small></div></div>' +
             '<div><span class="lbl">Hôm nay</span><div class="big">' + d.done + '<small> / ' + g + "</small></div></div>" +
