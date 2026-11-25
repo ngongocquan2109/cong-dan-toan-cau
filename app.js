@@ -220,7 +220,7 @@
   /* ---------- Gợi ý bài tiếp theo, kiểm tra đầu vào, luyện lỗi ---------- */
   function nextGrammar() {
     for (var i = 0; i < GR.length; i++) {
-      var t = GR[i], r = S.topics["g:" + t.id] || S.lvl["g:" + t.id], known = S.placement && S.placement.byTopic[t.id] === 1;
+      var t = GR[i], r = S.topics["g:" + t.id] || S.lvl["g:" + t.id], known = S.placement && S.placement.skip !== false && S.placement.byTopic[t.id] === 1;
       if (gDone(t)) continue;
       if (!r && known) continue;
       return t;
@@ -254,34 +254,179 @@
     };
     cfg.cfg = cfg; startSession(cfg); return null;
   }
+  /* ---------- Kiểm tra đầu vào: xếp bậc CEFR thích ứng, 3 giai đoạn ---------- */
+  var PL_LEVELS = ["A1", "A2", "B1"];
+  var dispLv = function (l) { return l || "dưới A1"; };
+  function plPool(level, lv, banned) { // câu chưa dùng ở lần làm trước được ưu tiên
+    var out = [];
+    GR.forEach(function (t) {
+      if (t.cefr !== level) return;
+      t.questions.forEach(function (q) { if (!lv || q.lv === lv) out.push({ t: t.id, id: "g:" + t.id + ":" + q.id }); });
+    });
+    out = shuffle(out);
+    return out.filter(function (x) { return !banned[x.id]; }).concat(out.filter(function (x) { return banned[x.id]; }));
+  }
+  function plPick(pool, n, taken) { // chọn n câu, ưu tiên mỗi chủ đề một câu
+    var res = [], usedT = {};
+    [0, 1].forEach(function (pass) {
+      pool.forEach(function (x) {
+        if (res.length >= n || taken[x.id]) return;
+        if (pass === 0 && usedT[x.t]) return;
+        res.push(x); usedT[x.t] = 1; taken[x.id] = 1;
+      });
+    });
+    return res;
+  }
   function viewPlacement() {
+    var st = null, banned = {}, bannedW = {};
+    (S.placeUsed || []).forEach(function (id) { banned[id] = 1; });
+    (S.placeWords || []).forEach(function (id) { bannedW[id] = 1; });
+    var base = function () { return SESS && SESS.items ? SESS.items.length : 0; };
+    function batch1(L) {
+      var items = [];
+      ["e", "m", "h"].forEach(function (lv) {
+        plPick(plPool(L, lv, banned), 2, st.taken).forEach(function (x) { var it = mkQuestion(x.id); it.topic = x.t; it.grp = "L:" + L; items.push(it); });
+      });
+      st.stage = 1; st.label = "Giai đoạn 1/3 · Dò bậc ngữ pháp, bậc " + L; st.bs = base(); st.bl = items.length;
+      return items;
+    }
+    function scan(s) {
+      var hi = st.passed.length ? st.passed[st.passed.length - 1] : null, focus = [];
+      if (st.stop) { focus.push(st.stop); if (hi) focus.push(hi); }
+      else if (hi) { focus.push(hi); if (PL_LEVELS.indexOf(hi) > 0) focus.push(PL_LEVELS[PL_LEVELS.indexOf(hi) - 1]); }
+      else focus.push("A1");
+      var asked = {}; s.items.forEach(function (it) { asked[it.id] = 1; });
+      var items = [];
+      focus.forEach(function (L) {
+        GR.forEach(function (t) {
+          if (t.cefr !== L || items.length >= 16) return;
+          var need = 2 - ((s.byTopic[t.id] || { n: 0 }).n);
+          if (need <= 0) return;
+          var qs = shuffle(t.questions.filter(function (q) { return !asked["g:" + t.id + ":" + q.id]; }));
+          var mid = qs.filter(function (q) { return q.lv === "m"; }), rest = qs.filter(function (q) { return q.lv !== "m"; });
+          var fresh = function (a) { return a.filter(function (q) { return !banned["g:" + t.id + ":" + q.id]; }).concat(a.filter(function (q) { return banned["g:" + t.id + ":" + q.id]; })); };
+          fresh(mid).concat(fresh(rest)).slice(0, Math.min(need, 16 - items.length)).forEach(function (q) {
+            var it = mkQuestion("g:" + t.id + ":" + q.id); it.topic = t.id; it.grp = "S2"; items.push(it);
+          });
+        });
+      });
+      st.stage = 2; st.label = "Giai đoạn 2/3 · Quét chủ đề"; st.bs = base(); st.bl = items.length || 1;
+      return items;
+    }
+    function vocabItems() {
+      var items = [], counts = { A1: 7, A2: 7, B1: 6 };
+      PL_LEVELS.forEach(function (L) {
+        var pool = shuffle(Object.keys(W).filter(function (id) { return W[id].cefr === L; }));
+        pool = pool.filter(function (id) { return !bannedW[id]; }).concat(pool.filter(function (id) { return bannedW[id]; }));
+        pool.slice(0, counts[L]).forEach(function (id) {
+          var w = W[id], opts = [];
+          shuffle(pool).forEach(function (x) { if (opts.length < 3 && W[x].vi !== w.vi && opts.indexOf(W[x].vi) < 0) opts.push(W[x].vi); });
+          items.push({ kind: "mc", id: id, q: "“" + w.w + "” nghĩa là gì?", options: shuffle(opts.concat([w.vi])), answer: w.vi,
+            explain: w.w + " " + w.ipa + " = " + w.vi + ". Ví dụ: " + w.ex + " (" + w.exVi + ")", tag: "tu-vung-" + w.tid, grp: "V:" + L, noRecord: true });
+        });
+      });
+      st.stage = 3; st.label = "Giai đoạn 3/3 · Từ vựng"; st.bs = base(); st.bl = items.length;
+      return items;
+    }
+    function more(s) {
+      if (st.phase === 1) {
+        if (st.cur) {
+          var g = s.grp["L:" + st.cur] || { ok: 0, n: 0 };
+          st.scores[st.cur] = g.ok;
+          if (g.ok >= 5) st.passed.push(st.cur); else { st.stop = st.cur; st.phase = 2; }
+          st.cur = null;
+        }
+        if (st.phase === 1) {
+          if (st.li < PL_LEVELS.length) { st.cur = PL_LEVELS[st.li++]; return batch1(st.cur); }
+          st.phase = 2;
+        }
+      }
+      if (st.phase === 2) { st.phase = 3; var sc = scan(s); if (sc.length) return sc; }
+      if (st.phase === 3) { st.phase = 4; return vocabItems(); }
+      return null;
+    }
+    function progress(s) {
+      var frac = Math.min(1, (s.i - st.bs) / (st.bl || 1)), pct;
+      if (st.stage === 1) pct = ((st.li - 1) + frac) / PL_LEVELS.length * 33;
+      else pct = (st.stage - 1) * 33 + frac * 33;
+      return { pct: Math.round(Math.min(100, pct)), text: st.label };
+    }
+    function result(s) {
+      var R = { at: today(), gl: st.passed.length ? st.passed[st.passed.length - 1] : "", vl: "", scores: st.scores, stop: st.stop, byTopic: {}, tinfo: {}, vs: {} };
+      for (var i = 0; i < PL_LEVELS.length; i++) {
+        var g = s.grp["V:" + PL_LEVELS[i]]; if (g) R.vs[PL_LEVELS[i]] = g.ok + "/" + g.n;
+        if (g && g.n && g.ok / g.n >= 0.7) R.vl = PL_LEVELS[i]; else break;
+      }
+      GR.forEach(function (t) {
+        var b = s.byTopic[t.id];
+        if (!b || !b.n) {
+          if (st.passed.indexOf(t.cefr) >= 0) { R.tinfo[t.id] = { st: "likely", ok: 0, n: 0 }; R.byTopic[t.id] = 1; } // bậc đã vượt, chưa hỏi chủ đề này: coi là có vẻ ổn
+          else R.tinfo[t.id] = { st: "none", ok: 0, n: 0 };
+          return;
+        }
+        var r = b.ok / b.n, passedLv = st.passed.indexOf(t.cefr) >= 0;
+        var stt = r === 1 && (b.n >= 2 || passedLv) ? "green" : r >= 0.5 ? "yellow" : "red";
+        R.byTopic[t.id] = stt === "green" ? 1 : r; R.tinfo[t.id] = { st: stt, ok: b.ok, n: b.n };
+      });
+      var maxRank = RANK[st.stop || (st.passed.length ? PL_LEVELS[Math.min(PL_LEVELS.length - 1, PL_LEVELS.indexOf(R.gl) + 1)] : "A1")] || 1;
+      R.path = [];
+      ["red", "yellow", "none"].forEach(function (k) {
+        GR.forEach(function (t) { if (R.tinfo[t.id].st === k && (k !== "none" || RANK[t.cefr] <= maxRank) && R.path.length < 10) R.path.push(t.id); });
+      });
+      return R;
+    }
+    var statLabel = { green: "Vững", likely: "Có vẻ vững", yellow: "Nên ôn", red: "Cần học", none: "Chưa kiểm tra" };
     var cfg = {
       title: "Kiểm tra đầu vào", exit: "#/grammar", nav: "grammar",
       build: function () {
-        var items = [];
-        GR.forEach(function (t) {
-          shuffle(t.questions).slice(0, 2).forEach(function (q) { var it = mkQuestion("g:" + t.id + ":" + q.id); it.topic = t.id; items.push(it); });
-        });
-        return items;
+        st = { phase: 1, li: 1, cur: PL_LEVELS[0], passed: [], stop: null, scores: {}, taken: {}, stage: 1, label: "", bs: 0, bl: 1 };
+        return batch1(PL_LEVELS[0]);
       },
+      more: function (s) { return more(s); },
+      progress: function (s) { return progress(s); },
       onFinish: function (pct, s) {
-        var by = {}, start = null;
-        GR.forEach(function (t) {
-          var b = s.byTopic[t.id], v = b && b.n ? b.ok / b.n : 0;
-          by[t.id] = v; if (start === null && v < 1) start = t.id;
-        });
-        S.placement = { at: today(), byTopic: by, start: start, pct: pct };
+        var R = result(s); cfg._R = R;
+        var prev = S.placement && S.placement.gl !== undefined ? S.placement : null;
+        R.prev = prev ? { at: prev.at, gl: prev.gl, vl: prev.vl } : null;
+        S.placement = Object.assign({}, R, { pct: pct, start: R.path[0] || null, skip: S.placement && S.placement.skip === false ? false : true });
+        S.placeHist = (S.placeHist || []).concat([{ at: R.at, gl: R.gl, vl: R.vl, pct: pct }]).slice(-10);
+        S.placeUsed = s.items.filter(function (it) { return it.id.charAt(0) === "g"; }).map(function (it) { return it.id; });
+        S.placeWords = s.items.filter(function (it) { return it.id.charAt(0) === "v"; }).map(function (it) { return it.id; });
       },
       extra: function () {
-        var p = S.placement; if (!p) return "";
-        var idx = -1; GR.forEach(function (t, i) { if (t.id === p.start) idx = i; });
-        var t = idx >= 0 ? GR[idx] : null;
-        return '<div class="feedback good"><b>Gợi ý:</b> ' + (t ? 'Nên bắt đầu từ bài "' + esc(t.title) + '".' + (idx > 0 ? " Các bài trước đó Ngài làm đúng cả hai câu kiểm tra." : "")
-          : "Ngài làm đúng toàn bộ phần kiểm tra. Có thể ôn lại từng bài để chắc hơn.") + "</div>" +
-          (t ? '<div class="actions"><a class="btn" href="#/grammar/' + t.id + '">Học bài này</a></div>' : "");
+        var R = cfg._R; if (!R) return "";
+        var lvl = PL_LEVELS.map(function (L) {
+          var sc = R.scores[L];
+          return L + " " + (sc === undefined ? "chưa làm" : sc + "/6 " + (sc >= 5 ? "✓" : "✗"));
+        }).join(" · ");
+        var notes = ["Mỗi bậc chỉ 6 câu nên kết quả dùng để chọn điểm bắt đầu, không phải chứng chỉ."];
+        if (R.gl === "B1") notes.push("App mới có 2 chủ đề B1 nên kết quả B1 chưa chắc.");
+        if (GR.some(function (t) { return R.tinfo[t.id].st === "likely"; })) notes.push("Chủ đề chưa hỏi ở bậc đã vượt qua được coi là có vẻ vững; có thể mở bài để chắc hơn.");
+        if (R.stop && R.scores[R.stop] === 4) notes.push("Bậc " + R.stop + " sát ngưỡng (4/6), có thể làm lại sau vài bài ôn.");
+        if (!R.gl) notes.push("Chưa vượt bậc A1, nên bắt đầu từ các bài A1.");
+        var cmp = R.prev ? '<p class="muted">Lần trước (' + R.prev.at + "): ngữ pháp " + dispLv(R.prev.gl) + ", từ vựng " + dispLv(R.prev.vl) + ".</p>" : "";
+        var map = GR.map(function (t) {
+          var f = R.tinfo[t.id];
+          return '<a class="tchip ' + f.st + '" href="#/grammar/' + t.id + '"><span class="cefr small">' + t.cefr + "</span> " + esc(t.title) + "<small>" + statLabel[f.st] + (f.n ? " · " + f.ok + "/" + f.n : "") + "</small></a>";
+        }).join("");
+        var path = R.path.length ? "<ol class=\"plpath\">" + R.path.map(function (id) {
+          var t = GR.filter(function (x) { return x.id === id; })[0];
+          return '<li><a href="#/grammar/' + id + '">' + esc(t.title) + "</a> <small class=\"muted\">" + statLabel[R.tinfo[id].st] + "</small></li>";
+        }).join("") + "</ol>" : '<p class="muted">Không có bài nào cần học gấp.</p>';
+        return '<div class="plres"><div class="plgrid"><div class="plbox"><span class="lbl">Bậc ngữ pháp</span><div class="big">' + esc(dispLv(R.gl)) + "</div><small class=\"muted\">" + lvl + '</small></div>' +
+          '<div class="plbox"><span class="lbl">Bậc từ vựng</span><div class="big">' + esc(dispLv(R.vl)) + '</div><small class="muted">' + PL_LEVELS.map(function (L) { return L + " " + (R.vs[L] || "–"); }).join(" · ") + "</small></div></div>" +
+          cmp + '<ul class="plnotes">' + notes.map(function (n) { return "<li>" + esc(n) + "</li>"; }).join("") + "</ul>" +
+          '<h3 style="margin-top:16px">Bản đồ chủ đề</h3><div class="tmap">' + map + "</div>" +
+          '<h3 style="margin-top:16px">Lộ trình gợi ý</h3><p class="muted">Cần học trước, rồi nên ôn, rồi các bài chưa kiểm tra.</p>' + path +
+          '<p class="muted" style="margin-top:8px">Ẩn bài đã vững khỏi gợi ý "Bài tiếp theo": <a href="#/placement/skip"><b>' + (S.placement.skip === false ? "đang tắt, bấm để bật" : "đang bật, bấm để tắt") + "</b></a></p></div>" +
+          (R.path[0] ? '<div class="actions"><a class="btn" href="#/grammar/' + R.path[0] + '">Học bài đầu tiên</a></div>' : "");
       }
     };
     cfg.cfg = cfg; startSession(cfg); return null;
+  }
+  function togglePlacementSkip() {
+    if (S.placement) { S.placement.skip = S.placement.skip === false; save(); toast(S.placement.skip === false ? "Đã tắt ẩn bài vững." : "Đã bật ẩn bài vững."); }
+    location.hash = "#/grammar"; return null;
   }
 
   /* ---------- Màn hình: Tổng quan ---------- */
@@ -358,6 +503,7 @@
         var n = GR.filter(function (x) { return x.cefr === c; }), dn = n.filter(gDone).length, st = n.reduce(function (a, t) { return a + stars(t); }, 0);
         return '<div class="crow"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><span><span class="cefr small">' + c + "</span> " + esc(CEFR_NAME[c]) + "</span><b>" + dn + "/" + n.length + " bài vững · " + st + "/" + n.length * 3 + ' sao</b></div><div class="bar"><i style="width:' + (n.length ? Math.round(dn / n.length * 100) : 0) + '%"></i></div></div>';
       }).join("") + "</section>" +
+      placementCard() +
       '<section class="grid two">' +
         '<div class="card"><h2>7 ngày gần đây</h2><p class="muted">Số câu và thẻ mỗi ngày. Cột xanh chanh là ngày đủ mục tiêu.</p><div class="chart">' + cols.join("") + "</div></div>" +
         '<div class="card"><h2>Báo cáo tuần</h2>' +
@@ -374,6 +520,17 @@
           '<h3 style="margin-top:20px">Huy hiệu</h3><div class="badges">' + bdg + "</div></div>" +
       "</section>";
   }
+  function placementCard() {
+    var P = S.placement; if (!P || P.gl === undefined) return "";
+    var H = S.placeHist || [], last = H[H.length - 1], prev = H[H.length - 2];
+    var idx = function (l) { return l ? ["A1", "A2", "B1"].indexOf(l) + 1 : 0; };
+    var diff = function (a, b, name) { if (!prev) return ""; var d = idx(a) - idx(b); return name + (d > 0 ? " tăng " + d + " bậc" : d < 0 ? " giảm " + (-d) + " bậc" : " giữ nguyên"); };
+    var cmp = prev ? '<p class="muted">So với lần trước (' + prev.at + "): " + [diff(last.gl, prev.gl, "ngữ pháp"), diff(last.vl, prev.vl, "từ vựng")].join(", ") + ".</p>" : '<p class="muted">Làm lại sau vài tuần để so sánh tiến bộ.</p>';
+    return '<section class="card" style="margin-top:16px"><h2>Kết quả kiểm tra đầu vào</h2><div class="plgrid" style="margin-top:10px"><div class="plbox"><span class="lbl">Bậc ngữ pháp</span><div class="big">' + esc(dispLv(P.gl)) +
+      '</div></div><div class="plbox"><span class="lbl">Bậc từ vựng</span><div class="big">' + esc(dispLv(P.vl)) + "</div></div></div>" + cmp +
+      (H.length ? '<div class="phist">' + H.map(function (h) { return '<div class="prow"><span>' + h.at + "</span><span>NP " + esc(dispLv(h.gl)) + " · TV " + esc(dispLv(h.vl)) + '</span><div class="bar"><i style="width:' + h.pct + '%"></i></div><b>' + h.pct + "%</b></div>"; }).join("") + "</div>" : "") +
+      '<div class="actions"><a class="btn small ghost" href="#/placement">Làm lại</a></div></section>';
+  }
   function bindDashboard() {
     document.querySelectorAll("[data-sel]").forEach(function (el) {
       el.addEventListener("click", function () { dashSel = el.getAttribute("data-sel"); $("#view").innerHTML = viewDashboard(); bindDashboard(); });
@@ -383,7 +540,8 @@
   /* ---------- Màn hình: Ngữ pháp ---------- */
   function viewGrammarList() {
     var banner = '<div class="card" style="margin-top:16px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><div><h3>Kiểm tra đầu vào</h3><p class="muted">' +
-      (S.placement ? "Đã làm ngày " + S.placement.at + ". Làm lại bất cứ lúc nào." : "Mỗi bài 2 câu để biết nên bắt đầu từ đâu.") +
+      (S.placement && S.placement.gl !== undefined ? "Lần gần nhất " + S.placement.at + ": ngữ pháp " + dispLv(S.placement.gl) + ", từ vựng " + dispLv(S.placement.vl) + ". Làm lại sau vài tuần để xem tiến bộ."
+        : S.placement ? "Bản cũ làm ngày " + S.placement.at + ". Làm lại để biết bậc CEFR." : "Khoảng 15 phút: xác định bậc ngữ pháp, bậc từ vựng và chủ đề nào nên học trước.") +
       '</p></div><a class="btn" href="#/placement">' + (S.placement ? "Làm lại" : "Bắt đầu") + "</a></div>";
     var out = '<h1 style="margin-top:12px">Ngữ pháp</h1><p class="muted">Học theo bậc CEFR từ A1. Mỗi bài có lý thuyết, lỗi thường gặp và bài tập ba mức Dễ, Vừa, Khó. Qua 80% mỗi mức thì được 1 sao.</p>' + banner;
     var cur = null;
@@ -503,16 +661,21 @@
     });
   }
   function startSession(cfg) {
-    SESS = Object.assign({ i: 0, ok: 0, bad: 0, rem: 0, forgot: 0, answered: false, picked: null, flip: false, wrong: [], xp0: S.xp, byTopic: {} }, cfg);
+    SESS = Object.assign({ i: 0, ok: 0, bad: 0, rem: 0, forgot: 0, answered: false, picked: null, flip: false, wrong: [], xp0: S.xp, byTopic: {}, grp: {} }, cfg);
     SESS.items = cfg.build();
     renderSession();
   }
   function sessionBar() {
     var s = SESS, total = s.items.length;
+    if (s.progress) {
+      var pg = s.progress(s);
+      return '<div class="sbar"><a class="back" href="' + s.exit + '" style="margin:0">✕ Thoát</a><div class="bar"><i style="width:' + pg.pct + '%"></i></div><span class="muted">' + esc(pg.text) + "</span></div>";
+    }
     return '<div class="sbar"><a class="back" href="' + s.exit + '" style="margin:0">✕ Thoát</a><div class="bar"><i style="width:' + Math.round(s.i / total * 100) + '%"></i></div><span class="muted">' + Math.min(s.i + 1, total) + "/" + total + "</span></div>";
   }
   function renderSession() {
     var s = SESS, view = $("#view");
+    if (s.i >= s.items.length && s.more) { var add = s.more(s); if (add && add.length) s.items = s.items.concat(add); } // bài thích ứng: xin thêm câu theo kết quả
     if (s.i >= s.items.length) { finishSession(); return; }
     var it = s.items[s.i], html = "";
     if (it.kind === "card") {
@@ -583,7 +746,8 @@
   }
   function finishAnswer(it) {
     var s = SESS;
-    recordAnswer(it.id, s.lastOk, it.tag);
+    if (!it.noRecord) recordAnswer(it.id, s.lastOk, it.tag);
+    if (it.grp) { var gg = s.grp[it.grp] || (s.grp[it.grp] = { ok: 0, n: 0 }); gg.n++; if (s.lastOk) gg.ok++; }
     if (s.lastOk) s.ok++; else { s.bad++; s.wrong.push({ q: it.q, a: it.answer }); }
     if (it.topic) { var b = s.byTopic[it.topic] || (s.byTopic[it.topic] = { ok: 0, n: 0 }); b.n++; if (s.lastOk) b.ok++; }
     renderSession();
@@ -878,7 +1042,7 @@
       if (p[1] === "weak") html = viewWeak();
       else { html = viewReview(p[1] === "go"); if (html && p[1] !== "go") html += deckCard() + weakCard(); }
     } else if (sec === "deck") { html = viewDeck(); binder = bindDeck; }
-    else if (sec === "placement") html = viewPlacement();
+    else if (sec === "placement") html = p[1] === "skip" ? togglePlacementSkip() : viewPlacement();
     else if (sec === "settings") { html = viewSettings(); binder = bindSettings; }
     else html = viewNotFound();
     renderNav(sec === "placement" ? "grammar" : sec === "deck" ? "review" : sec);
