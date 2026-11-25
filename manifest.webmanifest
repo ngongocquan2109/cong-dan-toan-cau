@@ -1,0 +1,13 @@
+{
+  "name": "Ngài Richard - Công dân toàn cầu",
+  "short_name": "Công dân toàn cầu",
+  "description": "Học ngữ pháp và từ vựng tiếng Anh cơ bản, có ôn tập thông minh.",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#dce9fb",
+  "theme_color": "#dce9fb",
+  "lang": "vi",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
