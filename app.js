@@ -4,7 +4,7 @@
   "use strict";
 
   /* ---------- Tiện ích ---------- */
-  var APP_VERSION = "v18"; // đổi cùng CACHE trong sw.js và ?v= trong index.html mỗi lần phát hành
+  var APP_VERSION = "v19"; // đổi cùng CACHE trong sw.js và ?v= trong index.html mỗi lần phát hành
   var KEY = "nrcdtc.v1";
   var INTERVALS = [0, 1, 3, 7, 14, 30]; // số ngày chờ theo "hộp" (spaced repetition)
   var $ = function (s, r) { return (r || document).querySelector(s); };
@@ -818,13 +818,24 @@
     var t = GR.filter(function (x) { return x.id === id; })[0]; if (!t) return viewNotFound();
     var lv = LV[lvl] ? lvl : "all"; // không chọn mức thì làm tất cả
     var qs = lv === "all" ? t.questions : t.questions.filter(function (q) { return q.lv === lv; });
+    var gained = [], mixRes = {};
     var cfg = {
       title: t.title + (lv === "all" ? "" : " · mức " + LV[lv]), exit: "#/grammar/" + t.id, nav: "grammar",
-      build: function () { return shuffle(qs).map(function (q) { return mkQuestion("g:" + t.id + ":" + q.id); }); },
-      onFinish: function (pct) {
+      build: function () { return shuffle(qs).map(function (q) { var it = mkQuestion("g:" + t.id + ":" + q.id); it.grp = "lv:" + q.lv; return it; }); },
+      onFinish: function (pct, s) {
         if (lv === "all") {
           var r = S.topics["g:" + t.id] || { best: 0, attempts: 0 };
           S.topics["g:" + t.id] = { last: pct, best: Math.max(r.best, pct), attempts: r.attempts + 1 };
+          // làm trộn cả 3 mức: chấm riêng từng mức, mức nào đạt từ 80% thì được sao của mức đó
+          var LA = S.lvl["g:" + t.id] || (S.lvl["g:" + t.id] = {}); gained = []; mixRes = {};
+          ["e", "m", "h"].forEach(function (l) {
+            var g = s.grp["lv:" + l]; if (!g || !g.n) return;
+            var p = Math.round(g.ok / g.n * 100), b0 = LA[l] || 0;
+            mixRes[l] = { ok: g.ok, n: g.n, p: p };
+            LA[l] = Math.max(b0, p);
+            if (b0 < 80 && p >= 80) gained.push(l);
+          });
+          if (gained.length) toast("Được thêm " + gained.length + " sao: " + gained.map(function (l) { return LV[l]; }).join(", ") + "!");
         } else {
           var L = S.lvl["g:" + t.id] || (S.lvl["g:" + t.id] = {}), before = L[lv] || 0;
           L[lv] = Math.max(before, pct);
@@ -832,7 +843,12 @@
         }
       },
       extra: function () {
-        if (lv === "all") return "";
+        if (lv === "all") {
+          return '<div class="feedback ' + (gained.length ? "good" : "") + '"><b>Kết quả theo mức:</b> ' + ["e", "m", "h"].map(function (l) {
+            var x = mixRes[l]; return x ? LV[l] + " " + x.ok + "/" + x.n + (x.p >= 80 ? " ✓" : " ✗") : "";
+          }).filter(Boolean).join(" · ") + "<br>" + (gained.length ? "Được thêm sao ở mức: " + gained.map(function (l) { return LV[l]; }).join(", ") + "." : "Mỗi mức cần từ 80% để được sao. Sao đã có vẫn được giữ.") + "</div>" +
+            '<div class="actions"><a class="btn ghost" href="#/grammar/' + t.id + '">Xem sao của bài</a></div>';
+        }
         var nx = lv === "e" ? "m" : lv === "m" ? "h" : null;
         return (lvBest(t, lv) >= 80 ? '<div class="feedback good"><b>Đạt mức ' + LV[lv] + ".</b> Ngài được 1 sao." + (nx ? " Có thể thử mức " + LV[nx] + "." : "") + "</div>"
           : '<div class="feedback"><b>Chưa đạt 80%.</b> Xem lại phần lý thuyết rồi làm lại mức này.</div>') +
