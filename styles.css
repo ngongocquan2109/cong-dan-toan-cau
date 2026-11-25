@@ -217,18 +217,29 @@ table.t th { color: var(--muted); font-weight: 600; font-size: 13px; }
 }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
+/* Danh sách chọn giọng đọc (bấm trực tiếp, hợp cảm ứng) */
+.vlist { max-height: 340px; overflow-y: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--line); border-radius: 18px; background: var(--cardb); margin-top: 10px; }
+.vrow { display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%; min-height: 52px; padding: 12px 16px; border: 0; border-bottom: 1px solid var(--line); background: transparent; color: var(--text); text-align: left; font-size: 16px; -webkit-tap-highlight-color: transparent; }
+.vrow:last-child { border-bottom: 0; }
+.vrow small { color: var(--muted); font-size: 12px; margin-left: 4px; }
+.vrow b { font-size: 13px; font-weight: 600; color: var(--muted); white-space: nowrap; }
+.vrow:active { background: var(--chip); }
+.vrow.on { background: var(--lime); color: #111; }
+.vrow.on small, .vrow.on b { color: #222; }
+.vempty { padding: 16px; color: var(--muted); }
+
 /* Điện thoại: thanh điều hướng xuống đáy */
 @media (max-width: 760px) {
   .top { padding: 14px 16px 4px; }
   .brandtext small { display: none; }
   .pillnav {
-    position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 40;
+    position: fixed; bottom: calc(14px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); z-index: 40;
     display: grid; grid-template-columns: repeat(5, 1fr); gap: 0;
     width: calc(100vw - 20px); max-width: 440px;
   }
   .pillnav a { padding: 9px 2px; font-size: 12px; justify-content: center; text-align: center; }
   .badge { min-width: 16px; height: 16px; padding: 0 4px; font-size: 10px; }
-  main { padding: 10px 14px 100px; }
+  main { padding: 10px 14px calc(120px + env(safe-area-inset-bottom)); }
   .hero, .two, .panel, .cols3 { grid-template-columns: 1fr; }
   .stats3 { gap: 6px; }
   .card { padding: 18px; border-radius: 24px; }

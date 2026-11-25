@@ -557,12 +557,12 @@
   function viewSettings() {
     var th = currentTheme();
     return '<div class="settings"><h1 style="margin-top:12px">Cài đặt</h1>' +
+      '<div class="card"><h2>Giọng đọc tiếng Anh</h2><p class="muted">Bấm vào một giọng để chọn và nghe thử ngay. Ưu tiên giọng Anh-Mỹ.</p>' +
+        '<p class="muted" id="voiceNow" style="margin-top:6px"></p><div class="vlist" id="voiceList" role="radiogroup" aria-label="Giọng đọc tiếng Anh"></div><p class="muted" id="voiceNote" style="margin-top:8px"></p></div>' +
       '<div class="card"><h2>Mục tiêu mỗi ngày</h2><p class="muted">Số câu hoặc thẻ cần làm để tính là đã học trong ngày (giữ streak).</p>' +
         '<div class="field"><span>Số mục mỗi ngày</span><input class="input" id="goalIn" type="number" min="3" max="100" value="' + S.goal + '"></div></div>' +
       '<div class="card"><h2>Giao diện</h2><div class="field"><span>Chế độ</span><div class="seg"><button data-theme="light" class="' + (th === "light" ? "on" : "") + '" type="button">Sáng</button><button data-theme="dark" class="' + (th === "dark" ? "on" : "") + '" type="button">Tối</button></div></div>' +
         '<p class="muted" style="margin-top:8px">Mặc định theo cài đặt của thiết bị; khi Ngài tự chọn, app sẽ nhớ.</p></div>' +
-      '<div class="card"><h2>Giọng đọc tiếng Anh</h2><p class="muted">Chọn giọng nghe tự nhiên nhất trên thiết bị của Ngài (ưu tiên giọng Anh-Mỹ có chữ Premium/Enhanced). App dùng giọng có sẵn của máy, không cần mạng.</p>' +
-        '<div class="field"><select class="input" id="voiceSel" style="width:100%;font-size:16px"></select></div><p class="muted" id="voiceNote" style="margin-top:8px"></p><div class="actions"><button class="btn small" id="voiceTest" type="button">Nghe thử</button></div></div>' +
       '<div class="card"><h2>Sao lưu tiến độ</h2><p class="muted">Tiến độ chỉ lưu trên thiết bị này. Xuất file để chuyển sang máy khác hoặc phòng khi xóa dữ liệu trình duyệt.</p>' +
         '<div class="actions"><button class="btn" id="exp" type="button">Xuất file sao lưu</button><label class="btn ghost" style="cursor:pointer">Nhập file<input id="imp" type="file" accept="application/json" hidden></label></div></div>' +
       '<div class="card"><h2>Câu bị báo sai</h2><p class="muted">Đã ghi nhận ' + S.reports.length + ' câu. Danh sách này nằm trong file sao lưu để Đầy tớ xem lại và sửa nội dung.</p></div>' +
@@ -573,37 +573,45 @@
       var v = Math.max(3, Math.min(100, parseInt(e.target.value, 10) || 10)); S.goal = v; e.target.value = v; save(); toast("Đã đặt mục tiêu " + v + " mục mỗi ngày.");
     });
     document.querySelectorAll("[data-theme]").forEach(function (b) { b.addEventListener("click", function () { setTheme(b.getAttribute("data-theme")); route(); }); });
-    // Danh sách giọng trên điện thoại thường nạp chậm hoặc báo nhiều lần. Chỉ vẽ lại khi danh sách thật sự đổi,
-    // để không đóng bảng chọn của hệ điều hành đúng lúc Ngài đang chọn.
+    // Danh sách giọng trên điện thoại thường nạp chậm hoặc báo nhiều lần. Chỉ vẽ lại khi danh sách thật sự đổi.
+    // Dùng danh sách bấm trực tiếp thay cho ô chọn gốc: bấm là chọn và đọc thử ngay, có phản hồi trên mọi trình duyệt.
     var lastSig = null;
     var fillVoices = function () {
-      var sel = $("#voiceSel"); if (!sel) return false;
+      var box = $("#voiceList"); if (!box) return false;
       var all = "speechSynthesis" in window ? speechSynthesis.getVoices() : [];
       var vs = englishVoices(), usingAll = false;
       if (!vs.length && all.length) { vs = all.slice(); usingAll = true; } // máy không gắn nhãn tiếng Anh: vẫn cho chọn
       vs.sort(function (a, b) { return scoreVoice(b) - scoreVoice(a); });
       var cur = usingAll ? (S.voice ? all.filter(function (v) { return v.name === S.voice; })[0] : null) : pickVoice();
-      var sig = vs.map(function (v) { return v.name; }).join("|") + "#" + (S.voice || "") + "#" + usingAll;
-      var note = $("#voiceNote");
+      var curName = cur ? cur.name : "";
+      var sig = vs.map(function (v) { return v.name; }).join("|") + "#" + curName + "#" + usingAll;
       if (sig === lastSig) return vs.length > 0;
       lastSig = sig;
-      sel.innerHTML = vs.length ? vs.map(function (v) {
-        return '<option value="' + esc(v.name) + '"' + (cur && cur.name === v.name ? " selected" : "") + ">" + esc(v.name) + " (" + esc(v.lang) + ")</option>";
-      }).join("") : '<option value="">Đang tìm giọng đọc trên thiết bị…</option>';
-      if (note) note.textContent = !vs.length ? "Thiết bị chưa báo danh sách giọng. Nếu chờ vài giây vẫn trống, nút nghe vẫn đọc bằng giọng mặc định của máy."
-        : usingAll ? "Máy chưa gắn nhãn tiếng Anh cho giọng nào, nên đây là toàn bộ giọng có sẵn. Hãy chọn giọng tiếng Anh rồi bấm Nghe thử." : "";
+      box.innerHTML = vs.length ? vs.map(function (v) {
+        var on = v.name === curName;
+        return '<button type="button" class="vrow' + (on ? " on" : "") + '" role="radio" aria-checked="' + on + '" data-voice="' + esc(v.name) + '"><span>' + esc(v.name) + " <small>" + esc(v.lang) + "</small></span><b>" + (on ? "Đang dùng" : "Chọn") + "</b></button>";
+      }).join("") : '<div class="vempty">Đang tìm giọng đọc trên thiết bị…</div>';
+      var now = $("#voiceNow"); if (now) now.textContent = curName ? "Đang dùng: " + curName : "";
+      var note = $("#voiceNote");
+      if (note) note.textContent = !vs.length ? "Thiết bị chưa báo danh sách giọng. Nếu chờ vài giây vẫn trống, nút nghe ở thẻ từ vựng vẫn đọc bằng giọng mặc định của máy."
+        : usingAll ? "Máy chưa gắn nhãn tiếng Anh cho giọng nào, nên đây là toàn bộ giọng có sẵn. Hãy chọn giọng tiếng Anh." : "";
       return vs.length > 0;
     };
     fillVoices();
     if ("speechSynthesis" in window) {
       speechSynthesis.onvoiceschanged = fillVoices;
       var tries = 0, timer = setInterval(function () { // iPhone và Android có thể không báo sự kiện, nên hỏi lại vài giây đầu
-        if (!$("#voiceSel") || ++tries > 20) { clearInterval(timer); return; }
+        if (!$("#voiceList") || ++tries > 20) { clearInterval(timer); return; }
         fillVoices();
       }, 300);
     }
-    $("#voiceSel").addEventListener("change", function (e) { S.voice = e.target.value || null; save(); toast("Đã chọn giọng: " + (e.target.value || "mặc định")); });
-    $("#voiceTest").addEventListener("click", function () { speak("Hello! I am happy to learn English with you."); });
+    $("#voiceList").addEventListener("click", function (e) {
+      var b = e.target.closest ? e.target.closest(".vrow") : null; if (!b) return;
+      S.voice = b.getAttribute("data-voice"); save();
+      lastSig = null; fillVoices(); // cập nhật dấu "Đang dùng" ngay
+      toast("Đã chọn giọng: " + S.voice);
+      speak("Hello! I am happy to learn English with you.");
+    });
     $("#exp").addEventListener("click", exportData);
     $("#imp").addEventListener("change", function (e) { if (e.target.files[0]) importData(e.target.files[0]); });
     $("#reset").addEventListener("click", function () {
