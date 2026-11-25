@@ -1,5 +1,5 @@
 /* Service worker: lưu file app để dùng được khi mất mạng. */
-const CACHE = "nrcdtc-v8";
+const CACHE = "nrcdtc-v9";
 const FILES = [
   "./", "index.html", "styles.css", "app.js", "manifest.webmanifest", "icon.svg",
   "data/grammar-to-be.js",
