@@ -331,7 +331,17 @@ body.zen main { padding-bottom: 80px; }
   .pillnav a { padding: 14px 0; font-size: clamp(12px, 3.5vw, 14px); white-space: nowrap; justify-content: center; text-align: center; }
   .badge { min-width: 16px; height: 16px; padding: 0 4px; font-size: 10px; }
   main { padding: 10px 14px calc(150px + env(safe-area-inset-bottom)); }
-  .hero, .two, .panel, .cols3 { grid-template-columns: 1fr; }
+  .two, .panel, .cols3 { grid-template-columns: 1fr; }
+  .hero { grid-template-columns: 1fr 1fr; gap: 12px; } /* điện thoại: thẻ XP bên trái, đồng hồ bên phải cho đỡ dài */
+  .hero > :first-child { grid-column: 1 / -1; }
+  .hero .heroR, .hero .clockcard { padding: 14px; border-radius: 22px; min-width: 0; }
+  .heroR .big { font-size: 34px; }
+  .heroR .big small { font-size: 15px; }
+  .heroR p.muted { font-size: 13px; }
+  .heroR .btn { width: 100%; justify-content: center; padding: 10px 12px; font-size: 14px; }
+  .clockcard { gap: 6px; }
+  .clkdig b { font-size: 24px; }
+  .clkdig span { font-size: 12px; }
   .stats3 { gap: 6px; }
   .card { padding: 18px; border-radius: 24px; }
   .toast { bottom: 110px; }

@@ -4,7 +4,7 @@
   "use strict";
 
   /* ---------- Tiện ích ---------- */
-  var APP_VERSION = "v17"; // đổi cùng CACHE trong sw.js và ?v= trong index.html mỗi lần phát hành
+  var APP_VERSION = "v18"; // đổi cùng CACHE trong sw.js và ?v= trong index.html mỗi lần phát hành
   var KEY = "nrcdtc.v1";
   var INTERVALS = [0, 1, 3, 7, 14, 30]; // số ngày chờ theo "hộp" (spaced repetition)
   var $ = function (s, r) { return (r || document).querySelector(s); };
@@ -488,7 +488,7 @@
 
     return '' +
       '<section class="grid hero">' +
-        '<div class="card"><div class="hello"><img class="avatar big" src="icons/avatar-160.png" alt="" width="64" height="64"><div><p class="eyebrow">Hôm nay · ' + k + '</p><h1>Xin chào, Ngài Richard</h1></div></div>' +
+        '<div class="card"><div class="hello"><img class="avatar big" src="icons/avatar-160.png" alt="" width="64" height="64"><div><p class="eyebrow">' + (function (dd) { return DAYS_FULL[dd.getDay()] + ", " + pad(dd.getDate()) + "-" + pad(dd.getMonth() + 1) + "-" + dd.getFullYear(); })(parseKey(k)) + '</p><h1>Xin chào, Ngài Richard</h1></div></div>' +
           '<div class="stats3">' +
             '<div><span class="lbl">Streak</span><div class="big">' + st + '<small> ngày</small></div></div>' +
             '<div><span class="lbl">Hôm nay</span><div class="big">' + d.done + '<small> / ' + g + "</small></div></div>" +
@@ -557,7 +557,7 @@
       if (n.getMinutes() !== lastMin) {
         lastMin = n.getMinutes();
         T.textContent = pad(n.getHours()) + ":" + pad(n.getMinutes());
-        D.textContent = DAYS_FULL[n.getDay()] + ", " + pad(n.getDate()) + "/" + pad(n.getMonth() + 1);
+        D.textContent = DAYS_FULL[n.getDay()] + ", " + pad(n.getDate()) + "-" + pad(n.getMonth() + 1) + "-" + n.getFullYear();
       }
       return true;
     }
