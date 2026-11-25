@@ -295,7 +295,7 @@ textarea.input { resize: vertical; min-height: 90px; }
 .fab { border: 1px solid var(--line); background: var(--dark); color: #fff; border-radius: 99px; padding: 10px 18px; font-weight: 600; font-size: 14px; box-shadow: var(--shadow); }
 .fab[hidden] { display: none; }
 .notepanel {
-  position: fixed; left: 18px; bottom: 72px; z-index: 46; width: min(380px, calc(100vw - 36px)); max-height: min(70vh, 560px); overflow-y: auto;
+  position: fixed; left: 18px; bottom: 72px; z-index: 46; width: min(380px, calc(100vw - 36px)); max-height: min(86vh, 740px); overflow-y: auto;
   background: var(--bg2); border: 1px solid var(--line); border-radius: 22px; padding: 16px; box-shadow: var(--shadow);
 }
 .notepanel[hidden] { display: none; }
@@ -303,6 +303,23 @@ textarea.input { resize: vertical; min-height: 90px; }
 .notepanel .input { font-size: 16px; padding: 10px 14px; margin-top: 6px; }
 .nres { display: flex; justify-content: space-between; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line); margin-top: 8px; }
 .nbtn { display: flex; flex-direction: column; gap: 6px; flex: none; }
+/* Âm thanh nền */
+.fab.playing { background: var(--lime); color: #111; border-color: var(--lime2); max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.schips { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+.schip { text-align: left; display: flex; flex-direction: column; gap: 2px; min-height: 52px; padding: 8px 12px; border-radius: 16px; border: 1px solid var(--line); background: var(--chip); color: var(--text); }
+.schip small { color: var(--muted); font-size: 12px; line-height: 1.25; }
+.schips.three .schip small { font-size: 11px; }
+.schip:hover { border-color: var(--text); }
+.schip.on { background: var(--lime); color: #111; border-color: var(--lime2); }
+.schip.on small { color: #333; }
+.schips:not(.three) .schip:last-child { grid-column: 1 / -1; }
+.schips.three { grid-template-columns: repeat(3, 1fr); }
+.sgl { margin: 12px 0 0; }
+.sfoot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; padding: 8px 0 10px; border-bottom: 1px solid var(--line); }
+.sfoot p { font-size: 13px; }
+.range { width: 100%; margin-top: 6px; accent-color: var(--lime2); height: 28px; }
+.soundpanel .field { margin-top: 12px; }
+.soundpanel .seg { flex-wrap: wrap; }
 body.zen .top, body.zen .pillnav { display: none; }
 body.zen main { padding-bottom: 80px; }
 
@@ -323,7 +340,9 @@ body.zen main { padding-bottom: 80px; }
   .card { padding: 18px; border-radius: 24px; }
   .toast { bottom: 84px; }
   .fabs { bottom: calc(82px + env(safe-area-inset-bottom)); left: 12px; }
-  .notepanel { bottom: calc(132px + env(safe-area-inset-bottom)); left: 12px; width: calc(100vw - 24px); max-height: 58vh; }
+  .notepanel { bottom: calc(132px + env(safe-area-inset-bottom)); left: 12px; width: calc(100vw - 24px); max-height: 68vh; }
+  .schip { min-height: 46px; padding: 8px 12px; }
+  .schip small { display: none; }
   body.zen .fabs { bottom: calc(16px + env(safe-area-inset-bottom)); }
   body.zen .notepanel { bottom: calc(66px + env(safe-area-inset-bottom)); }
   .core { grid-template-columns: 1fr; }

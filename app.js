@@ -58,7 +58,7 @@
 
   /* ---------- Trạng thái lưu trữ ---------- */
   function defaults() {
-    return { version: 1, goal: 10, theme: null, voice: null, xp: 0, days: {}, srs: {}, errors: {}, topics: {}, reports: [], badges: {}, lvl: {}, deck: {}, notes: "" };
+    return { version: 1, goal: 10, theme: null, voice: null, xp: 0, days: {}, srs: {}, errors: {}, topics: {}, reports: [], badges: {}, lvl: {}, deck: {}, notes: "", sound: { vol: 60, timer: 0 } };
   }
   function load() {
     try { var r = JSON.parse(localStorage.getItem(KEY)); return Object.assign(defaults(), r || {}); }
@@ -909,7 +909,7 @@
       '<input class="input" id="noteQ" placeholder="Gõ từ tiếng Anh hoặc nghĩa tiếng Việt" autocomplete="off" autocapitalize="none" spellcheck="false"><div id="noteRes"></div>' +
       '<label class="lbl" for="noteTa" style="margin-top:12px;display:block">Ghi chú của Ngài</label><textarea class="input" id="noteTa" rows="5" placeholder="Ghi từ mới, mẹo, câu hay…"></textarea><p class="muted" style="font-size:12px;margin-top:4px">Lưu tự động trên thiết bị này.</p>';
     $("#noteTa").value = S.notes || "";
-    var open = function (on) { panel.hidden = !on; btn.setAttribute("aria-expanded", on); if (on) $("#noteQ").focus(); };
+    var open = function (on) { panel.hidden = !on; btn.setAttribute("aria-expanded", on); if (on) { var sp = $("#soundPanel"); if (sp) { sp.hidden = true; $("#soundBtn").setAttribute("aria-expanded", "false"); } $("#noteQ").focus(); } };
     btn.addEventListener("click", function () { open(panel.hidden); });
     $("#noteClose").addEventListener("click", function () { open(false); btn.focus(); });
     document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !panel.hidden) open(false); });
@@ -926,6 +926,181 @@
       if (s && W[s.getAttribute("data-nsp")]) speak(W[s.getAttribute("data-nsp")].w);
       if (a) { forceReview(a.getAttribute("data-nad")); toast("Đã đưa từ này vào lịch ôn hôm nay."); renderNav(currentSec); }
     });
+  }
+
+  /* ---------- Âm thanh nền: máy tự tạo bằng Web Audio, không cần tải file, không cần mạng ---------- */
+  var SOUND_GROUPS = [
+    ["", [["rain", "Tiếng mưa", "Mưa đều, dễ chịu"], ["storm", "Mưa giông", "Mưa và sấm xa"], ["fire", "Lửa trại", "Củi nổ lách tách"], ["waves", "Sóng biển", "Sóng vỗ chậm"],
+      ["stream", "Suối chảy", "Nước róc rách"], ["wind", "Gió", "Gió thổi nhẹ"], ["night", "Đêm hè", "Dế kêu ngoài vườn"]]],
+    ["Nhiễu nền", [["pink", "Hồng", "Giống thác xa"], ["brown", "Nâu", "Trầm như quạt"], ["white", "Trắng", "Che tiếng ồn"]]]
+  ];
+  var SOUNDS = []; SOUND_GROUPS.forEach(function (g) { g[1].forEach(function (x) { SOUNDS.push(x); }); });
+  function initSound() {
+    var panel = $("#soundPanel"), btn = $("#soundBtn");
+    var AC = window.AudioContext || window.webkitAudioContext;
+    var ctx = null, master = null, bufs = {}, cur = null, curKind = null, timers = [], nextThunder = 0, endTimer = null, tickTimer = null, endAt = 0;
+    if (!S.sound) S.sound = { vol: 60, timer: 0 };
+    var snd = S.sound;
+    panel.innerHTML = '<div class="nphead"><b>Âm thanh nền</b><button class="link" id="soundClose" type="button">Đóng</button></div>' +
+      '<p class="muted shint" style="font-size:13px">Máy tự tạo âm thanh, không cần mạng.</p>' +
+      '<div class="sfoot"><p class="muted" id="sStatus"></p><button class="btn small ghost" id="sStop" type="button">Dừng</button></div>' +
+      '<div id="schips" role="group" aria-label="Chọn âm thanh">' + SOUND_GROUPS.map(function (g, gi) {
+        return (g[0] ? '<p class="lbl sgl">' + g[0] + "</p>" : "") + '<div class="schips' + (gi ? " three" : "") + '">' + g[1].map(function (x) {
+          return '<button class="schip" type="button" data-s="' + x[0] + '" aria-pressed="false"><b>' + x[1] + "</b><small>" + x[2] + "</small></button>";
+        }).join("") + "</div>";
+      }).join("") + "</div>" +
+      '<label class="lbl" for="sVol" style="display:block;margin-top:14px">Âm lượng</label><input id="sVol" class="range" type="range" min="0" max="100" value="' + snd.vol + '">' +
+      '<div class="field"><span class="lbl">Hẹn giờ tắt</span><div class="seg" id="sTimer">' + [[0, "Không"], [15, "15 phút"], [30, "30 phút"], [60, "60 phút"]].map(function (t) {
+        return '<button type="button" data-t="' + t[0] + '">' + t[1] + "</button>";
+      }).join("") + '</div></div>';
+
+    function ensure() {
+      if (!AC) return false;
+      if (!ctx) { ctx = new AC(); master = ctx.createGain(); master.connect(ctx.destination); setVol(); }
+      if (ctx.state === "suspended") ctx.resume();
+      return true;
+    }
+    function setVol() { if (master) master.gain.value = Math.pow(snd.vol / 100, 2) * 3; }
+    function buf(type) {
+      if (bufs[type]) return bufs[type];
+      var len = ctx.sampleRate * 5, b = ctx.createBuffer(1, len, ctx.sampleRate), d = b.getChannelData(0), i, w;
+      if (type === "white") { for (i = 0; i < len; i++) d[i] = Math.random() * 2 - 1; }
+      else if (type === "pink") {
+        var b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+        for (i = 0; i < len; i++) {
+          w = Math.random() * 2 - 1;
+          b0 = .99886 * b0 + w * .0555179; b1 = .99332 * b1 + w * .0750759; b2 = .969 * b2 + w * .153852;
+          b3 = .8665 * b3 + w * .3104856; b4 = .55 * b4 + w * .5329522; b5 = -.7616 * b5 - w * .016898;
+          d[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + w * .5362) * .11; b6 = w * .115926;
+        }
+      } else { var last = 0; for (i = 0; i < len; i++) { w = Math.random() * 2 - 1; last = (last + .02 * w) / 1.02; d[i] = last * 3.5; } }
+      return (bufs[type] = b);
+    }
+    function loopSrc(type) { var s = ctx.createBufferSource(); s.buffer = buf(type); s.loop = true; return s; }
+    function filt(type, f, q) { var n = ctx.createBiquadFilter(); n.type = type; n.frequency.value = f; if (q) n.Q.value = q; return n; }
+    function gain(v) { var g = ctx.createGain(); g.gain.value = v; return g; }
+    function osc(f) { var o = ctx.createOscillator(); o.frequency.value = f; return o; }
+
+    function build(kind) {
+      var out = gain(0), srcs = [], pre = [], s, g;
+      if (kind === "white" || kind === "pink" || kind === "brown") {
+        s = loopSrc(kind); g = gain(kind === "white" ? .3 : kind === "pink" ? .55 : .75); s.connect(g); g.connect(out); srcs.push(s);
+      } else if (kind === "rain") {
+        s = loopSrc("white"); var hp = filt("highpass", 700), lp = filt("lowpass", 7500); g = gain(.22);
+        s.connect(hp); hp.connect(lp); lp.connect(g); g.connect(out); srcs.push(s);
+        var s2 = loopSrc("pink"), lp2 = filt("lowpass", 1400), g2 = gain(.5); s2.connect(lp2); lp2.connect(g2); g2.connect(out); srcs.push(s2);
+        timers.push(setInterval(function () { // những giọt mưa rơi lách tách
+          for (var k = 0; k < 2; k++) {
+            if (Math.random() < .45) continue;
+            var d = ctx.createBufferSource(); d.buffer = buf("white");
+            var bp = filt("bandpass", 1200 + Math.random() * 4200, 2.5), dg = gain(0), t = ctx.currentTime;
+            dg.gain.setValueAtTime(0, t); dg.gain.linearRampToValueAtTime(.12 + Math.random() * .16, t + .004); dg.gain.exponentialRampToValueAtTime(.0001, t + .04 + Math.random() * .04);
+            d.connect(bp); bp.connect(dg); dg.connect(out); d.start(t, Math.random() * 4, .1);
+          }
+        }, 70));
+      } else if (kind === "storm") {
+        var rb = build("rain"); // mưa giông = lớp mưa + tiếng sấm xa thỉnh thoảng
+        rb.out.disconnect(); rb.out.connect(out); rb.srcs.forEach(function (x) { pre.push(x); });
+        nextThunder = Date.now() + 5000;
+        timers.push(setInterval(function () {
+          if (Date.now() < nextThunder) return;
+          nextThunder = Date.now() + 14000 + Math.random() * 28000;
+          var t = ctx.currentTime + .05, th = loopSrc("brown"), tl = filt("lowpass", 320), tg = gain(0);
+          tl.frequency.setValueAtTime(320, t); tl.frequency.exponentialRampToValueAtTime(70, t + 6);
+          tg.gain.setValueAtTime(0, t); tg.gain.linearRampToValueAtTime(2.2, t + .5 + Math.random() * .6); tg.gain.exponentialRampToValueAtTime(.001, t + 6.5);
+          th.connect(tl); tl.connect(tg); tg.connect(out); th.start(t, Math.random() * 3); th.stop(t + 7);
+          var c = ctx.createBufferSource(); c.buffer = buf("white"); var cb = filt("bandpass", 420, .8), cg = gain(0);
+          cg.gain.setValueAtTime(0, t); cg.gain.linearRampToValueAtTime(.5, t + .02); cg.gain.exponentialRampToValueAtTime(.001, t + .6);
+          c.connect(cb); cb.connect(cg); cg.connect(out); c.start(t, 0, .7);
+        }, 3000));
+      } else if (kind === "fire") {
+        s = loopSrc("brown"); var fl = filt("lowpass", 380); g = gain(.9); s.connect(fl); fl.connect(g); g.connect(out); srcs.push(s); // lửa rì rầm
+        var s2 = loopSrc("pink"), fb = filt("bandpass", 1400, .5), g2 = gain(.9), fo = osc(.6), fg = gain(.5);
+        fo.connect(fg); fg.connect(g2.gain); s2.connect(fb); fb.connect(g2); g2.connect(out); srcs.push(s2, fo);
+        timers.push(setInterval(function () { // củi nổ lách tách
+          var n = Math.random() < .3 ? 3 : Math.random() < .6 ? 1 : 0;
+          for (var k = 0; k < n; k++) {
+            var t = ctx.currentTime + Math.random() * .09, d = ctx.createBufferSource(), pop = Math.random() < .1;
+            d.buffer = buf("white");
+            var bp = filt(pop ? "lowpass" : "bandpass", pop ? 260 : 600 + Math.random() * 3800, 1.5 + Math.random() * 2), dg = gain(0);
+            dg.gain.setValueAtTime(0, t); dg.gain.linearRampToValueAtTime(pop ? .9 : .2 + Math.random() * .3, t + .002); dg.gain.exponentialRampToValueAtTime(.0001, t + (pop ? .12 : .015 + Math.random() * .07));
+            d.connect(bp); bp.connect(dg); dg.connect(out); d.start(t, Math.random() * 4, .14);
+          }
+        }, 110));
+      } else if (kind === "wind") {
+        s = loopSrc("pink"); var wb = filt("bandpass", 600, .9), ws = gain(1.4), l1 = osc(.13), lg1 = gain(280), l2 = osc(.07), lg2 = gain(.7);
+        l1.connect(lg1); lg1.connect(wb.frequency); l2.connect(lg2); lg2.connect(ws.gain);
+        s.connect(wb); wb.connect(ws); ws.connect(out); srcs.push(s, l1, l2);
+      } else if (kind === "stream") {
+        s = loopSrc("white"); var sb = filt("bandpass", 2400, .5), sg = gain(.18), o1 = osc(6.3), o2 = osc(9.7), og = gain(.06), og2 = gain(.05);
+        o1.connect(og); og.connect(sg.gain); o2.connect(og2); og2.connect(sg.gain);
+        s.connect(sb); sb.connect(sg); sg.connect(out); srcs.push(s, o1, o2);
+        var s4 = loopSrc("pink"), l4 = filt("lowpass", 900), g4 = gain(.6); s4.connect(l4); l4.connect(g4); g4.connect(out); srcs.push(s4);
+      } else if (kind === "night") {
+        s = loopSrc("pink"); var nl = filt("lowpass", 500); g = gain(.8); s.connect(nl); nl.connect(g); g.connect(out); srcs.push(s); // gió nhẹ ban đêm
+        var base = [4400, 4700, 5100];
+        timers.push(setInterval(function () { // tiếng dế
+          base.forEach(function (f0) {
+            if (Math.random() < .5) return;
+            var t0 = ctx.currentTime + Math.random() * .3, pulses = 3 + Math.floor(Math.random() * 3), f = f0 + Math.random() * 120;
+            for (var p = 0; p < pulses; p++) {
+              var o = ctx.createOscillator(), pg = gain(0), t = t0 + p * .05;
+              o.frequency.value = f; pg.gain.setValueAtTime(0, t); pg.gain.linearRampToValueAtTime(.09, t + .008); pg.gain.linearRampToValueAtTime(0, t + .03);
+              o.connect(pg); pg.connect(out); o.start(t); o.stop(t + .04);
+            }
+          });
+        }, 500));
+      } else { // sóng biển: nhiễu nâu có độ to nhỏ lên xuống chậm
+        s = loopSrc("brown"); var lw = filt("lowpass", 900), sw = gain(.5), lfo = ctx.createOscillator(), lg = gain(.38);
+        lfo.frequency.value = .11; lfo.connect(lg); lg.connect(sw.gain); s.connect(lw); lw.connect(sw); sw.connect(out); srcs.push(s, lfo);
+        var s3 = loopSrc("white"), hp3 = filt("highpass", 2500), lw3 = filt("lowpass", 6000), sg3 = gain(.03), lfo2 = ctx.createOscillator(), lg2 = gain(.03); // bọt sóng
+        lfo2.frequency.value = .11; lfo2.connect(lg2); lg2.connect(sg3.gain); s3.connect(hp3); hp3.connect(lw3); lw3.connect(sg3); sg3.connect(out); srcs.push(s3, lfo2);
+      }
+      out.connect(master); srcs.forEach(function (x) { x.start(); });
+      out.gain.setTargetAtTime(1, ctx.currentTime, .3);
+      return { out: out, srcs: srcs.concat(pre) };
+    }
+    function halt(fast) {
+      timers.forEach(clearInterval); timers = [];
+      if (!cur) return;
+      var old = cur; cur = null; curKind = null;
+      old.out.gain.setTargetAtTime(0, ctx.currentTime, fast ? .05 : .25);
+      setTimeout(function () { old.srcs.forEach(function (x) { try { x.stop(); } catch (e) { /* đã dừng */ } }); old.out.disconnect(); }, fast ? 250 : 1500);
+    }
+    function clearTimers() { clearTimeout(endTimer); clearInterval(tickTimer); endTimer = null; tickTimer = null; endAt = 0; }
+    function armTimer() {
+      clearTimers();
+      if (!curKind || !snd.timer) { ui(); return; }
+      endAt = Date.now() + snd.timer * 60000;
+      endTimer = setTimeout(function () { halt(false); clearTimers(); ui(); toast("Đã tắt âm thanh theo hẹn giờ."); }, snd.timer * 60000);
+      tickTimer = setInterval(ui, 1000); ui();
+    }
+    function play(kind) {
+      if (!ensure()) { toast("Trình duyệt này không hỗ trợ tạo âm thanh."); return; }
+      if (curKind === kind) { halt(false); clearTimers(); ui(); return; }
+      halt(true); cur = build(kind); curKind = kind; armTimer(); ui();
+    }
+    function ui() {
+      panel.querySelectorAll(".schip").forEach(function (b) { var on = b.getAttribute("data-s") === curKind; b.classList.toggle("on", on); b.setAttribute("aria-pressed", on); });
+      panel.querySelectorAll("#sTimer button").forEach(function (b) { b.classList.toggle("on", Number(b.getAttribute("data-t")) === snd.timer); });
+      btn.classList.toggle("playing", !!curKind);
+      var left = endAt ? Math.max(0, Math.round((endAt - Date.now()) / 1000)) : 0;
+      var name = curKind ? SOUNDS.filter(function (x) { return x[0] === curKind; })[0][1] : "";
+      $("#sStatus").textContent = curKind ? "Đang phát: " + name + (endAt ? ". Tắt sau " + Math.floor(left / 60) + ":" + pad(left % 60) + "." : ". Không hẹn giờ.") : "Chưa phát. Chọn một âm thanh để bắt đầu.";
+      btn.textContent = curKind ? "Âm thanh · " + name : "Âm thanh";
+    }
+    var open = function (on) {
+      panel.hidden = !on; btn.setAttribute("aria-expanded", on);
+      if (on) { var np = $("#notePanel"); if (np) { np.hidden = true; $("#noteBtn").setAttribute("aria-expanded", "false"); } panel.querySelector(".schip").focus(); }
+    };
+    btn.addEventListener("click", function () { open(panel.hidden); });
+    $("#soundClose").addEventListener("click", function () { open(false); btn.focus(); });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !panel.hidden) open(false); });
+    $("#schips").addEventListener("click", function (e) { var b = e.target.closest ? e.target.closest(".schip") : null; if (b) play(b.getAttribute("data-s")); });
+    $("#sVol").addEventListener("input", function (e) { snd.vol = Number(e.target.value); setVol(); save(); });
+    $("#sTimer").addEventListener("click", function (e) { var b = e.target.closest ? e.target.closest("button") : null; if (!b) return; snd.timer = Number(b.getAttribute("data-t")); save(); armTimer(); });
+    $("#sStop").addEventListener("click", function () { halt(false); clearTimers(); ui(); });
+    ui();
   }
 
   /* ---------- Màn hình: Cài đặt, sao lưu ---------- */
@@ -1053,6 +1228,7 @@
   /* ---------- Khởi động ---------- */
   applyTheme();
   initNotebook();
+  initSound();
   route();
   if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) {
     navigator.serviceWorker.register("sw.js").catch(function () { /* bỏ qua nếu không đăng ký được */ });
