@@ -1,5 +1,5 @@
 /* Service worker: lưu file app để dùng được khi mất mạng. */
-const CACHE = "nrcdtc-v5";
+const CACHE = "nrcdtc-v7";
 const FILES = [
   "./", "index.html", "styles.css", "app.js", "manifest.webmanifest", "icon.svg",
   "data/grammar-to-be.js",
@@ -19,6 +19,7 @@ const FILES = [
   "data/grammar-there-is.js",
   "data/grammar-conditionals.js",
   "data/grammar-passive.js",
+  "data/grammar-plus.js",
   "data/vocab-helper.js",
   "data/vocab-food.js",
   "data/vocab-family.js",
@@ -29,7 +30,8 @@ const FILES = [
   "data/vocab-health.js",
   "data/vocab-shopping.js",
   "data/vocab-weather.js",
-  "data/vocab-time.js"
+  "data/vocab-time.js",
+  "data/vocab-cefr.js"
 ];
 
 self.addEventListener("install", (e) => {

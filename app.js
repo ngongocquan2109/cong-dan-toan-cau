@@ -31,6 +31,20 @@
   var GR = window.GRAMMAR || [];
   var VO = window.VOCAB || [];
   var TL = window.TAG_LABELS || {};
+  var GP = window.GRAMMAR_PLUS || {};
+  var VC = window.VOCAB_CEFR || {}; // bậc CEFR ước lượng của từng chủ đề từ vựng
+  var RANK = { A1: 1, A2: 2, B1: 3, B2: 4, C1: 5, C2: 6 };
+  var CEFR_NAME = { A1: "Nền tảng câu tiếng Anh", A2: "Mở rộng thì và cấu trúc", B1: "Câu phức cơ bản" };
+  var LV = { e: "Dễ", m: "Vừa", h: "Khó" };
+  // Gắn bậc CEFR, mức khó, lỗi thường gặp, câu hỏi mới vào từng chủ đề, rồi xếp lộ trình theo bậc.
+  GR.forEach(function (t) {
+    var p = GP[t.id]; if (!p) { t.cefr = "A1"; t.questions.forEach(function (q) { q.lv = q.lv || "m"; }); return; }
+    t.cefr = p.cefr; t.formula = p.formula; t.walk = p.walk; t.mistakes = p.mistakes; t.check = p.check;
+    t.questions.forEach(function (q, i) { q.lv = p.lv.charAt(i) || "m"; });
+    p.more.forEach(function (q) { t.questions.push(q); });
+  });
+  GR.map(function (t, i) { return [t, i]; }).sort(function (a, b) { return (RANK[a[0].cefr] - RANK[b[0].cefr]) || (a[1] - b[1]); })
+    .forEach(function (x, i) { GR[i] = x[0]; });
   var Q = {}; // id đầy đủ -> câu hỏi
   GR.forEach(function (t) {
     t.questions.forEach(function (q) { Q["g:" + t.id + ":" + q.id] = Object.assign({ gid: t.id }, q); });
@@ -38,13 +52,13 @@
   var W = {}; // id đầy đủ -> từ
   VO.forEach(function (t) {
     t.sets.forEach(function (s) {
-      s.words.forEach(function (w) { W["v:" + t.id + ":" + w.w] = Object.assign({ tid: t.id, sid: s.id }, w); });
+      s.words.forEach(function (w) { W["v:" + t.id + ":" + w.w] = Object.assign({ tid: t.id, sid: s.id, cefr: (window.WORD_CEFR || {})[t.id + ":" + w.w] || "" }, w); });
     });
   });
 
   /* ---------- Trạng thái lưu trữ ---------- */
   function defaults() {
-    return { version: 1, goal: 10, theme: null, voice: null, xp: 0, days: {}, srs: {}, errors: {}, topics: {}, reports: [], badges: {} };
+    return { version: 1, goal: 10, theme: null, voice: null, xp: 0, days: {}, srs: {}, errors: {}, topics: {}, reports: [], badges: {}, lvl: {}, deck: {}, notes: "" };
   }
   function load() {
     try { var r = JSON.parse(localStorage.getItem(KEY)); return Object.assign(defaults(), r || {}); }
@@ -74,8 +88,22 @@
   }
   function dueIds() {
     var t = today();
-    return Object.keys(S.srs).filter(function (id) { return S.srs[id].due <= t && (Q[id] || W[id]); });
+    return Object.keys(S.srs).filter(function (id) { return S.srs[id].due <= t && (Q[id] || W[id] || S.deck[id]); });
   }
+  /* ---------- Bộ thẻ riêng (+ Ôn tập) ---------- */
+  function addDeck(f, b) {
+    f = String(f || "").trim(); b = String(b || "").trim();
+    if (!f || !b) return false;
+    var id = "d:" + norm(f);
+    if (S.deck[id]) return false;
+    S.deck[id] = { f: f, b: b }; S.srs[id] = { box: 0, due: today(), seen: 0, ok: 0 }; save();
+    return true;
+  }
+  function forceReview(id) { S.srs[id] = { box: 0, due: today(), seen: (S.srs[id] || {}).seen || 0, ok: (S.srs[id] || {}).ok || 0 }; save(); }
+  function lvBest(t, l) { var r = S.lvl["g:" + t.id]; return r && r[l] ? r[l] : 0; }
+  function stars(t) { return ["e", "m", "h"].filter(function (l) { return lvBest(t, l) >= 80; }).length; }
+  function starHtml(n) { return '<span class="stars" aria-label="' + n + ' trên 3 sao">' + "★".repeat(n) + "☆".repeat(3 - n) + "</span>"; }
+  function gDone(t) { var r = S.topics["g:" + t.id]; return (r && r.last >= 80) || stars(t) >= 2; }
   function totals() {
     var c = 0, w = 0, n = 0;
     Object.keys(S.days).forEach(function (k) { c += S.days[k].correct; w += S.days[k].wrong; n += S.days[k].done; });
@@ -178,8 +206,8 @@
   /* ---------- Trạng thái chủ đề ---------- */
   function gStatus(t) {
     var r = S.topics["g:" + t.id];
-    if (!r) return ["Chưa học", "none"];
-    return r.last >= 80 ? ["Vững", "good"] : ["Đang yếu", "warn"];
+    if (!r && !stars(t) && !S.lvl["g:" + t.id]) return ["Chưa học", "none"];
+    return gDone(t) ? ["Vững", "good"] : ["Đang yếu", "warn"];
   }
   function vStatus(t) {
     var ws = []; t.sets.forEach(function (s) { ws = ws.concat(s.words); });
@@ -192,8 +220,8 @@
   /* ---------- Gợi ý bài tiếp theo, kiểm tra đầu vào, luyện lỗi ---------- */
   function nextGrammar() {
     for (var i = 0; i < GR.length; i++) {
-      var t = GR[i], r = S.topics["g:" + t.id], known = S.placement && S.placement.byTopic[t.id] === 1;
-      if (r && r.last >= 80) continue;
+      var t = GR[i], r = S.topics["g:" + t.id] || S.lvl["g:" + t.id], known = S.placement && S.placement.byTopic[t.id] === 1;
+      if (gDone(t)) continue;
       if (!r && known) continue;
       return t;
     }
@@ -326,6 +354,10 @@
           '<div style="margin-top:18px"><span class="lbl">Cần ôn hôm nay</span><div class="big">' + due + '<small> mục</small></div></div>' +
           '<div class="actions"><a class="btn" href="#/review">' + (due ? "Ôn ngay" : "Xem mục ôn tập") + "</a></div></div>" +
       "</section>" +
+      '<section class="card" style="margin-top:16px"><h2>Lộ trình CEFR</h2><p class="muted">Số bài ngữ pháp đã vững và số sao theo từng bậc.</p>' + ["A1", "A2", "B1"].map(function (c) {
+        var n = GR.filter(function (x) { return x.cefr === c; }), dn = n.filter(gDone).length, st = n.reduce(function (a, t) { return a + stars(t); }, 0);
+        return '<div class="crow"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><span><span class="cefr small">' + c + "</span> " + esc(CEFR_NAME[c]) + "</span><b>" + dn + "/" + n.length + " bài vững · " + st + "/" + n.length * 3 + ' sao</b></div><div class="bar"><i style="width:' + (n.length ? Math.round(dn / n.length * 100) : 0) + '%"></i></div></div>';
+      }).join("") + "</section>" +
       '<section class="grid two">' +
         '<div class="card"><h2>7 ngày gần đây</h2><p class="muted">Số câu và thẻ mỗi ngày. Cột xanh chanh là ngày đủ mục tiêu.</p><div class="chart">' + cols.join("") + "</div></div>" +
         '<div class="card"><h2>Báo cáo tuần</h2>' +
@@ -353,25 +385,73 @@
     var banner = '<div class="card" style="margin-top:16px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><div><h3>Kiểm tra đầu vào</h3><p class="muted">' +
       (S.placement ? "Đã làm ngày " + S.placement.at + ". Làm lại bất cứ lúc nào." : "Mỗi bài 2 câu để biết nên bắt đầu từ đâu.") +
       '</p></div><a class="btn" href="#/placement">' + (S.placement ? "Làm lại" : "Bắt đầu") + "</a></div>";
-    return '<h1 style="margin-top:12px">Ngữ pháp</h1><p class="muted">Học theo thứ tự từ cơ bản. Mỗi bài có giải thích ngắn và bộ câu hỏi.</p>' + banner + '<div class="topics">' +
-      GR.map(function (t) {
-        var r = S.topics["g:" + t.id];
-        return '<div class="card topic">' + pill(gStatus(t)) + gHint(t) + "<h2>" + esc(t.title) + '</h2><p class="muted">' + esc(t.summary) + "</p>" +
-          (r ? '<p class="muted" style="margin-top:8px">Lần gần nhất ' + r.last + "% · tốt nhất " + r.best + "%</p>" : "") +
-          '<div class="actions"><a class="btn" href="#/grammar/' + t.id + '">Học bài</a><a class="btn ghost" href="#/grammar/' + t.id + '/quiz">Làm bài (' + t.questions.length + " câu)</a></div></div>";
-      }).join("") + "</div>";
+    var out = '<h1 style="margin-top:12px">Ngữ pháp</h1><p class="muted">Học theo bậc CEFR từ A1. Mỗi bài có lý thuyết, lỗi thường gặp và bài tập ba mức Dễ, Vừa, Khó. Qua 80% mỗi mức thì được 1 sao.</p>' + banner;
+    var cur = null;
+    GR.forEach(function (t) {
+      if (t.cefr !== cur) {
+        if (cur) out += "</div>";
+        cur = t.cefr;
+        var n = GR.filter(function (x) { return x.cefr === cur; });
+        var done = n.filter(gDone).length;
+        out += '<h2 class="cefrh"><span class="cefr">' + cur + "</span> " + esc(CEFR_NAME[cur] || "") + '<small>' + done + "/" + n.length + ' bài vững</small></h2><div class="topics">';
+      }
+      var r = S.topics["g:" + t.id];
+      out += '<div class="card topic">' + pill(gStatus(t)) + gHint(t) + '<span class="cefr small">' + t.cefr + "</span>" + starHtml(stars(t)) + "<h2>" + esc(t.title) + '</h2><p class="muted">' + esc(t.summary) + "</p>" +
+        (r ? '<p class="muted" style="margin-top:8px">Lần gần nhất ' + r.last + "% · tốt nhất " + r.best + "%</p>" : "") +
+        '<div class="actions"><a class="btn" href="#/grammar/' + t.id + '">Học bài</a><a class="btn ghost" href="#/grammar/' + t.id + '/quiz/all">Làm bài (' + t.questions.length + " câu)</a></div></div>";
+    });
+    return out + "</div>";
   }
   function viewLesson(id) {
     var t = GR.filter(function (x) { return x.id === id; })[0];
     if (!t) return viewNotFound();
-    return '<div class="lesson"><a class="back" href="#/grammar">← Ngữ pháp</a><h1>' + esc(t.title) + '</h1><p class="muted">' + esc(t.summary) + "</p>" +
-      t.sections.map(function (s) {
-        var table = s.table ? '<table class="t"><thead><tr>' + s.table[0].map(function (h) { return "<th>" + esc(h) + "</th>"; }).join("") + "</tr></thead><tbody>" +
-          s.table.slice(1).map(function (r) { return "<tr>" + r.map(function (c) { return "<td>" + esc(c) + "</td>"; }).join("") + "</tr>"; }).join("") + "</tbody></table>" : "";
-        return '<div class="card sec"><h2>' + esc(s.heading) + "</h2><p>" + esc(s.body) + "</p>" + table +
-          '<ul class="ex">' + s.examples.map(function (e) { return "<li><b>" + esc(e.en) + "</b><span>" + esc(e.vi) + "</span></li>"; }).join("") + "</ul></div>";
-      }).join("") +
-      '<div class="actions"><a class="btn" href="#/grammar/' + t.id + '/quiz">Làm bài kiểm tra (' + t.questions.length + ' câu)</a></div></div>';
+    var add = function (en, vi) { return '<button class="addrev" type="button" data-f="' + esc(en) + '" data-b="' + esc(vi) + '">+ Ôn tập</button>'; };
+    var hasMist = t.mistakes && t.mistakes.length;
+    var html = '<div class="lesson"><a class="back" href="#/grammar">← Ngữ pháp</a><h1>' + esc(t.title) + ' <span class="cefr">' + t.cefr + "</span></h1>" +
+      '<div class="card core"><div><p class="eyebrow">Trọng tâm</p><p>' + esc(t.summary) + "</p></div>" +
+      (t.formula ? '<div class="formula"><p class="eyebrow">Cấu trúc chính</p><b>' + esc(t.formula) + "</b></div>" : "") + "</div>";
+    t.sections.forEach(function (s) {
+      if (hasMist && /lỗi/i.test(s.heading)) return; // đã có phần "Lỗi thường gặp" dạng Sai/Đúng bên dưới
+      var table = s.table ? '<table class="t"><thead><tr>' + s.table[0].map(function (h) { return "<th>" + esc(h) + "</th>"; }).join("") + "</tr></thead><tbody>" +
+        s.table.slice(1).map(function (r) { return "<tr>" + r.map(function (c) { return "<td>" + esc(c) + "</td>"; }).join("") + "</tr>"; }).join("") + "</tbody></table>" : "";
+      html += '<div class="card sec"><h2>' + esc(s.heading) + "</h2><p>" + esc(s.body) + "</p>" + table +
+        '<ul class="ex">' + s.examples.map(function (e) { return "<li><div><b>" + esc(e.en) + "</b><span>" + esc(e.vi) + "</span></div>" + add(e.en, e.vi) + "</li>"; }).join("") + "</ul></div>";
+    });
+    if (t.walk) {
+      html += '<div class="card sec"><h2>Phân tích ví dụ</h2><p class="muted">Đọc câu tiếng Anh trước, đoán nghĩa, rồi xem phần giải thích.</p>' +
+        t.walk.map(function (e, i) {
+          return '<div class="walk"><div class="walkhead"><b>' + esc(e.en) + "</b>" + add(e.en, e.vi) + '</div><div class="walkrow"><span class="lbl">Nghĩa</span><span>' + esc(e.vi) + '</span></div>' +
+            '<div class="walkrow"><span class="lbl">Cấu trúc và ngữ cảnh</span><span>' + esc(e.note) + "</span></div></div>";
+        }).join("") + "</div>";
+    }
+    if (hasMist) {
+      html += '<div class="card sec"><h2>Lỗi thường gặp</h2><p class="muted">Đối chiếu câu sai với câu đúng để nhớ lý do.</p>' +
+        t.mistakes.map(function (m) {
+          return '<div class="mist"><div class="mrow bad"><span class="lbl">Chưa đúng</span><b>' + esc(m.wrong) + '</b></div><div class="mrow good"><span class="lbl">Đã sửa</span><b>' + esc(m.right) +
+            "</b>" + add(m.right, m.why) + '</div><p class="muted">' + esc(m.why) + "</p></div>";
+        }).join("") + "</div>";
+    }
+    if (t.check) {
+      html += '<div class="card sec"><h2>Tự kiểm tra trước khi làm bài</h2><ul class="check">' + t.check.map(function (c, i) {
+        return '<li><label><input type="checkbox"> <span>' + esc(c) + "</span></label></li>";
+      }).join("") + "</ul></div>";
+    }
+    var nq = function (l) { return t.questions.filter(function (q) { return q.lv === l; }).length; };
+    html += '<div class="card sec"><h2>Làm bài kiểm tra</h2><p class="muted">Chọn mức. Đúng từ 80% thì được sao của mức đó.</p><div class="lvls">' +
+      ["e", "m", "h"].map(function (l, i) {
+        var b = lvBest(t, l);
+        return '<a class="lvbtn" href="#/grammar/' + t.id + "/quiz/" + l + '"><b>' + LV[l] + "</b><span class=\"stars\">" + "★".repeat(i + 1) + "☆".repeat(2 - i) + "</span><small>" + nq(l) + " câu" + (b ? " · tốt nhất " + b + "%" : "") + "</small>" + (b >= 80 ? '<i class="got">Đã đạt</i>' : "") + "</a>";
+      }).join("") + '<a class="lvbtn all" href="#/grammar/' + t.id + '/quiz/all"><b>Tất cả</b><span>Trộn mọi mức</span><small>' + t.questions.length + " câu</small></a></div></div></div>";
+    return html;
+  }
+  function bindLesson() {
+    document.querySelectorAll(".addrev").forEach(function (b) {
+      b.addEventListener("click", function () {
+        var ok = addDeck(b.getAttribute("data-f"), b.getAttribute("data-b"));
+        toast(ok ? "Đã thêm vào Ôn tập." : "Mục này đã có trong Ôn tập.");
+        if (ok) { b.textContent = "✓ Đã thêm"; b.disabled = true; renderNav("grammar"); }
+      });
+    });
   }
 
   /* ---------- Màn hình: Từ vựng ---------- */
@@ -379,16 +459,22 @@
     return '<h1 style="margin-top:12px">Từ vựng</h1><p class="muted">Học theo thẻ chủ đề. Mỗi lượt 10 từ, có nút nghe phát âm.</p><div class="topics">' +
       VO.map(function (t) {
         var n = 0; t.sets.forEach(function (s) { n += s.words.length; });
-        return '<div class="card topic">' + pill(vStatus(t)) + "<h2>" + esc(t.title) + '</h2><p class="muted">' + esc(t.summary) + " · " + n + ' từ</p><div class="actions"><a class="btn" href="#/vocab/' + t.id + '">Mở chủ đề</a></div></div>';
+        return '<div class="card topic">' + pill(vStatus(t)) + (VC[t.id] ? '<span class="cefr small">' + VC[t.id] + "</span>" : "") + "<h2>" + esc(t.title) + '</h2><p class="muted">' + esc(t.summary) + " · " + n + ' từ</p><div class="actions"><a class="btn" href="#/vocab/' + t.id + '">Mở chủ đề</a></div></div>';
       }).join("") + "</div>";
+  }
+  function vocabCefrNote(t) {
+    var c = {}, none = 0, n = 0;
+    t.sets.forEach(function (s) { s.words.forEach(function (w) { n++; var l = (window.WORD_CEFR || {})[t.id + ":" + w.w]; if (l) c[l] = (c[l] || 0) + 1; else none++; }); });
+    return '<p class="muted" style="margin-top:8px;font-size:13px">Bậc theo danh sách Oxford 3000/5000: ' + Object.keys(RANK).filter(function (l) { return c[l]; }).map(function (l) { return l + " " + c[l]; }).join(" · ") +
+      (none ? " · " + none + "/" + n + " từ không có trong danh sách (chưa gán bậc)" : "") + ".</p>";
   }
   function viewVocabTopic(tid) {
     var t = VO.filter(function (x) { return x.id === tid; })[0];
     if (!t) return viewNotFound();
-    return '<div class="lesson"><a class="back" href="#/vocab">← Từ vựng</a><h1>' + esc(t.title) + '</h1><p class="muted">' + esc(t.summary) + '</p><div class="card sec">' +
+    return '<div class="lesson"><a class="back" href="#/vocab">← Từ vựng</a><h1>' + esc(t.title) + (VC[t.id] ? ' <span class="cefr">' + VC[t.id] + "</span>" : "") + '</h1><p class="muted">' + esc(t.summary) + "</p>" + vocabCefrNote(t) + '<div class="card sec">' +
       t.sets.map(function (s) {
-        var r = S.topics["vs:" + t.id + ":" + s.id];
-        return '<div class="sethead"><div><b>' + esc(s.title) + "</b><div class=\"muted\">" + s.words.length + " từ" + (r ? " · bài kiểm tra gần nhất " + r.last + "%" : "") + '</div></div><a class="btn small" href="#/vocab/' + t.id + "/" + s.id + '">Học bộ này</a></div>';
+        var r = S.topics["vs:" + t.id + ":" + s.id], d = S.topics["vd:" + t.id + ":" + s.id];
+        return '<div class="sethead"><div><b>' + esc(s.title) + "</b><div class=\"muted\">" + s.words.length + " từ" + (r ? " · kiểm tra gần nhất " + r.last + "%" : "") + (d ? " · nghe viết " + d.last + "%" : "") + '</div></div><div class="actions" style="margin:0"><a class="btn small" href="#/vocab/' + t.id + "/" + s.id + '">Học bộ này</a><a class="btn small ghost" href="#/vocab/' + t.id + "/" + s.id + '/dict">Nghe viết</a></div></div>';
       }).join("") + "</div></div>";
   }
 
@@ -398,7 +484,14 @@
     var q = Q[id];
     return { kind: q.type === "fill" ? "fill" : "mc", id: id, q: q.q, options: q.options ? shuffle(q.options) : null, answer: q.answer, answers: q.answers, explain: q.explain, tag: q.tag };
   }
-  function mkCard(id) { return { kind: "card", id: id, w: W[id] }; }
+  function mkCard(id) {
+    if (id.charAt(0) === "d") { var d = S.deck[id]; return { kind: "card", id: id, w: { w: d.f, ipa: "", pos: "", vi: d.b, ex: "", exVi: "" } }; }
+    return { kind: "card", id: id, w: W[id] };
+  }
+  function mkDict(id) {
+    var w = W[id];
+    return { kind: "dict", id: id, w: w, q: "Nghe và viết: " + w.vi, answer: w.w, answers: [w.w], explain: w.w + " " + w.ipa + " = " + w.vi + ". Ví dụ: " + w.ex + " (" + w.exVi + ")", tag: "tu-vung-" + w.tid };
+  }
   function mkVocabQuiz(tid, words) {
     var pool = []; VO.forEach(function (t) { if (t.id === tid) t.sets.forEach(function (s) { pool = pool.concat(s.words); }); });
     return shuffle(words).slice(0, 5).map(function (w) {
@@ -424,10 +517,18 @@
     var it = s.items[s.i], html = "";
     if (it.kind === "card") {
       var w = it.w;
-      html = '<div class="card flash"><span class="pill">' + esc(w.pos) + '</span><div class="word">' + esc(w.w) + '</div><div class="ipa">' + esc(w.ipa) + "</div>" +
+      html = '<div class="card flash">' + (w.pos ? '<span class="pill">' + esc(w.pos) + "</span>" : "") + (w.cefr ? '<span class="cefr small">' + w.cefr + "</span>" : "") + '<div class="word">' + esc(w.w) + '</div>' + (w.ipa ? '<div class="ipa">' + esc(w.ipa) + "</div>" : "") +
         '<button class="btn ghost small speak" data-act="speak" type="button">Nghe phát âm</button>' +
-        (s.flip ? '<div class="mean" style="margin-top:20px">' + esc(w.vi) + '</div><p><b>' + esc(w.ex) + '</b></p><p class="muted">' + esc(w.exVi) + '</p><div class="rate"><button class="btn ghost" data-act="forgot" type="button">Chưa nhớ</button><button class="btn" data-act="remember" type="button">Đã nhớ</button></div>'
+        (s.flip ? '<div class="mean" style="margin-top:20px">' + esc(w.vi) + "</div>" + (w.ex ? '<p><b>' + esc(w.ex) + '</b></p><p class="muted">' + esc(w.exVi) + "</p>" : "") +
+                   '<div class="rate"><button class="btn ghost" data-act="forgot" type="button">Chưa nhớ</button><button class="btn" data-act="remember" type="button">Đã nhớ</button></div>' +
+                   (it.id.charAt(0) === "v" ? '<div style="margin-top:10px"><button class="link" data-act="addrev" type="button">+ Ôn tập: đưa từ này vào lịch ôn hôm nay</button></div>' : "")
                  : '<div class="rate"><button class="btn dark" data-act="flip" type="button">Lật thẻ</button></div>') + "</div>";
+    } else if (it.kind === "dict") {
+      html = '<div class="card flash"><p class="eyebrow">Nghe và viết lại từ tiếng Anh</p><button class="btn dark speakbig" data-act="speak" type="button" aria-label="Nghe từ">🔊 Nghe</button>' +
+        '<p class="muted" style="margin-top:12px">Gợi ý: ' + esc(it.w.vi) + (it.w.pos ? " (" + esc(it.w.pos) + ")" : "") + "</p>" +
+        '<input class="input" id="fillIn" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Gõ từ vừa nghe…" style="margin-top:16px" ' + (s.answered ? 'disabled value="' + esc(s.picked) + '"' : "") + ">" +
+        (s.answered ? '<div class="feedback ' + (s.lastOk ? "good" : "bad") + '"><b>' + (s.lastOk ? "Đúng rồi!" : "Chưa đúng. Đáp án: " + esc(it.answer)) + "</b><p>" + esc(it.explain) + '</p></div><div class="actions" style="justify-content:center"><button class="btn" data-act="next" type="button">Tiếp tục</button></div>'
+                     : '<div class="actions" style="justify-content:center"><button class="btn" data-act="check" type="button">Kiểm tra</button></div>') + "</div>";
     } else {
       var qhtml = esc(it.q).replace(/___/g, '<span class="blank"></span>');
       var body = "";
@@ -454,11 +555,13 @@
       b.addEventListener("click", function () { act(b.getAttribute("data-act"), b); });
     });
     if (s.answered) { var nb = view.querySelector('[data-act="next"]'); if (nb) nb.focus(); }
+    if (it.kind === "dict" && !s.answered && s.spoken !== s.i) { s.spoken = s.i; setTimeout(function () { speak(it.w.w); }, 200); }
   }
   function act(a, el) {
     var s = SESS; if (!s) return;
     var it = s.items[s.i];
     if (a === "speak") { speak(it.w.w); return; }
+    if (a === "addrev") { forceReview(it.id); toast("Đã đưa từ này vào lịch ôn hôm nay."); renderNav(s.nav); return; }
     if (a === "flip") { s.flip = true; renderSession(); return; }
     if (a === "remember" || a === "forgot") {
       var ok = a === "remember"; recordCard(it.id, ok); if (ok) s.rem++; else s.forgot++;
@@ -501,29 +604,46 @@
     renderNav(s.nav);
   }
 
-  function viewGrammarQuiz(id) {
+  function viewGrammarQuiz(id, lvl) {
     var t = GR.filter(function (x) { return x.id === id; })[0]; if (!t) return viewNotFound();
+    var lv = LV[lvl] ? lvl : "all"; // không chọn mức thì làm tất cả
+    var qs = lv === "all" ? t.questions : t.questions.filter(function (q) { return q.lv === lv; });
     var cfg = {
-      title: t.title, exit: "#/grammar/" + t.id, nav: "grammar",
-      build: function () { return shuffle(t.questions).map(function (q) { return mkQuestion("g:" + t.id + ":" + q.id); }); },
+      title: t.title + (lv === "all" ? "" : " · mức " + LV[lv]), exit: "#/grammar/" + t.id, nav: "grammar",
+      build: function () { return shuffle(qs).map(function (q) { return mkQuestion("g:" + t.id + ":" + q.id); }); },
       onFinish: function (pct) {
-        var r = S.topics["g:" + t.id] || { best: 0, attempts: 0 };
-        S.topics["g:" + t.id] = { last: pct, best: Math.max(r.best, pct), attempts: r.attempts + 1 };
+        if (lv === "all") {
+          var r = S.topics["g:" + t.id] || { best: 0, attempts: 0 };
+          S.topics["g:" + t.id] = { last: pct, best: Math.max(r.best, pct), attempts: r.attempts + 1 };
+        } else {
+          var L = S.lvl["g:" + t.id] || (S.lvl["g:" + t.id] = {}), before = L[lv] || 0;
+          L[lv] = Math.max(before, pct);
+          if (before < 80 && pct >= 80) toast("Được thêm 1 sao, mức " + LV[lv] + "!");
+        }
+      },
+      extra: function () {
+        if (lv === "all") return "";
+        var nx = lv === "e" ? "m" : lv === "m" ? "h" : null;
+        return (lvBest(t, lv) >= 80 ? '<div class="feedback good"><b>Đạt mức ' + LV[lv] + ".</b> Ngài được 1 sao." + (nx ? " Có thể thử mức " + LV[nx] + "." : "") + "</div>"
+          : '<div class="feedback"><b>Chưa đạt 80%.</b> Xem lại phần lý thuyết rồi làm lại mức này.</div>') +
+          (nx ? '<div class="actions"><a class="btn" href="#/grammar/' + t.id + "/quiz/" + nx + '">Làm mức ' + LV[nx] + "</a></div>" : "");
       }
     };
     cfg.cfg = cfg; startSession(cfg); return null;
   }
-  function viewVocabSet(tid, sid) {
+  function viewVocabSet(tid, sid, mode) {
     var t = VO.filter(function (x) { return x.id === tid; })[0];
     var set = t && t.sets.filter(function (x) { return x.id === sid; })[0]; if (!set) return viewNotFound();
+    var dict = mode === "dict";
     var cfg = {
-      title: t.title + " · " + set.title, exit: "#/vocab/" + t.id, nav: "vocab",
+      title: t.title + " · " + set.title + (dict ? " · nghe viết" : ""), exit: "#/vocab/" + t.id, nav: "vocab",
       build: function () {
+        if (dict) return shuffle(set.words).map(function (w) { return mkDict("v:" + t.id + ":" + w.w); });
         var words = shuffle(set.words);
         return words.map(function (w) { return mkCard("v:" + t.id + ":" + w.w); }).concat(mkVocabQuiz(t.id, set.words));
       },
       onFinish: function (pct) {
-        var key = "vs:" + t.id + ":" + set.id, r = S.topics[key] || { best: 0, attempts: 0 };
+        var key = (dict ? "vd:" : "vs:") + t.id + ":" + set.id, r = S.topics[key] || { best: 0, attempts: 0 };
         S.topics[key] = { last: pct, best: Math.max(r.best, pct), attempts: r.attempts + 1 };
       }
     };
@@ -550,7 +670,98 @@
         '</p><div class="actions" style="justify-content:center"><a class="btn" href="#/grammar">Ngữ pháp</a><a class="btn ghost" href="#/vocab">Từ vựng</a></div></div>';
     }
     return '<div class="card" style="max-width:640px;margin:20px auto"><p class="eyebrow">Hôm nay cần ôn</p><div class="big">' + ids.length + '<small> mục</small></div><p class="muted">' + g + " câu ngữ pháp · " + v +
-      ' thẻ từ vựng. Mỗi lượt tối đa 20 mục.</p><div class="actions"><a class="btn" href="#/review/go">Bắt đầu ôn</a></div></div>';
+      ' thẻ từ vựng và thẻ riêng. Mỗi lượt tối đa 20 mục.</p><div class="actions"><a class="btn" href="#/review/go">Bắt đầu ôn</a></div></div>';
+  }
+
+  /* ---------- Bộ thẻ riêng ---------- */
+  function deckCard() {
+    var n = Object.keys(S.deck).length;
+    return '<div class="card" style="max-width:640px;margin:16px auto"><p class="eyebrow">Bộ thẻ của tôi</p><p class="muted">' +
+      (n ? n + " thẻ, tự thêm bằng nút + Ôn tập hoặc tự tạo." : "Chưa có thẻ. Bấm + Ôn tập ở ví dụ trong bài học, hoặc tự tạo bộ thẻ bằng cách nhập hay dán danh sách.") +
+      '</p><div class="actions"><a class="btn" href="#/deck">+ Tạo bộ thẻ</a>' + (n ? '<a class="btn ghost" href="#/deck">Quản lý (' + n + ")</a>" : "") + "</div></div>";
+  }
+  function parseDeckLines(text) {
+    var seps = ["\t", " | ", "|", " - ", " – ", " — ", ";", ","], out = [], skipped = 0;
+    String(text).split(/\r?\n/).forEach(function (line) {
+      line = line.trim(); if (!line) return;
+      for (var i = 0; i < seps.length; i++) {
+        var p = line.indexOf(seps[i]);
+        if (p > 0 && line.slice(p + seps[i].length).trim()) { out.push([line.slice(0, p).trim(), line.slice(p + seps[i].length).trim()]); return; }
+      }
+      skipped++;
+    });
+    return { rows: out, skipped: skipped };
+  }
+  function viewDeck() {
+    var ids = Object.keys(S.deck);
+    return '<div class="lesson"><a class="back" href="#/review">← Ôn tập</a><h1>Bộ thẻ của tôi</h1><p class="muted">Thẻ ở đây được xếp lịch ôn như các mục khác. Mặt trước là tiếng Anh, mặt sau là nghĩa.</p>' +
+      '<div class="card sec"><h2>Thêm một thẻ</h2><div class="deckform"><input class="input" id="dkF" placeholder="Mặt trước, ví dụ: take care of"><input class="input" id="dkB" placeholder="Mặt sau, ví dụ: chăm sóc"><button class="btn" id="dkAdd" type="button">Thêm thẻ</button></div></div>' +
+      '<div class="card sec"><h2>Dán danh sách</h2><p class="muted">Mỗi dòng một thẻ. Ngăn cách bằng dấu Tab, |, dấu gạch ngang có khoảng trắng, dấu chấm phẩy hoặc dấu phẩy. Dán thẳng từ Word, Excel hay Google Docs đều được.</p>' +
+        '<textarea class="input" id="dkPaste" rows="6" placeholder="apple - quả táo&#10;to be - thì, là, ở"></textarea><div class="actions"><button class="btn" id="dkImp" type="button">Nhập danh sách</button></div></div>' +
+      '<div class="card sec"><h2>Các thẻ hiện có (' + ids.length + ")</h2>" + (ids.length ? ids.map(function (id) {
+        var d = S.deck[id];
+        return '<div class="sethead"><div><b>' + esc(d.f) + '</b><div class="muted">' + esc(d.b) + '</div></div><div class="actions" style="margin:0"><button class="btn small ghost" data-sp="' + esc(id) + '" type="button">Nghe</button><button class="btn small ghost" data-del="' + esc(id) + '" type="button">Xóa</button></div></div>';
+      }).join("") : '<p class="muted">Chưa có thẻ nào.</p>') + "</div></div>";
+  }
+  function bindDeck() {
+    var refresh = function () { $("#view").innerHTML = viewDeck(); bindDeck(); renderNav("review"); };
+    $("#dkAdd").addEventListener("click", function () {
+      var ok = addDeck($("#dkF").value, $("#dkB").value);
+      if (!ok) { toast($("#dkF").value.trim() && $("#dkB").value.trim() ? "Thẻ này đã có." : "Hãy điền cả hai mặt của thẻ."); return; }
+      toast("Đã thêm thẻ."); refresh();
+    });
+    $("#dkImp").addEventListener("click", function () {
+      var r = parseDeckLines($("#dkPaste").value), added = 0, dup = 0;
+      r.rows.forEach(function (x) { if (addDeck(x[0], x[1])) added++; else dup++; });
+      if (!added && !dup && !r.skipped) { toast("Chưa có dòng nào để nhập."); return; }
+      toast("Đã thêm " + added + " thẻ" + (dup ? ", bỏ qua " + dup + " thẻ trùng" : "") + (r.skipped ? ", " + r.skipped + " dòng thiếu dấu ngăn cách" : "") + "."); refresh();
+    });
+    document.querySelectorAll("[data-sp]").forEach(function (b) { b.addEventListener("click", function () { var d = S.deck[b.getAttribute("data-sp")]; if (d) speak(d.f); }); });
+    document.querySelectorAll("[data-del]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        var id = b.getAttribute("data-del");
+        if (!confirm("Xóa thẻ này khỏi bộ thẻ?")) return;
+        delete S.deck[id]; delete S.srs[id]; save(); refresh();
+      });
+    });
+  }
+
+  /* ---------- Sổ tay: tra từ trong kho 1.000 từ và ghi chú ---------- */
+  var plain = function (s) { return norm(s).normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/g, "d"); };
+  function noteSearch(q) {
+    q = plain(q); if (!q) return [];
+    var hits = [];
+    Object.keys(W).forEach(function (id) {
+      var w = W[id], a = plain(w.w), b = plain(w.vi), sc = 0;
+      if (a === q) sc = 3; else if (a.indexOf(q) === 0) sc = 2; else if (a.indexOf(q) >= 0 || b.indexOf(q) >= 0) sc = 1;
+      if (sc) hits.push([sc, id]);
+    });
+    return hits.sort(function (x, y) { return y[0] - x[0]; }).slice(0, 6).map(function (x) { return x[1]; });
+  }
+  function initNotebook() {
+    var panel = $("#notePanel"), btn = $("#noteBtn"), timer;
+    panel.innerHTML = '<div class="nphead"><b>Sổ tay</b><button class="link" id="noteClose" type="button">Đóng</button></div>' +
+      '<label class="lbl" for="noteQ">Tra từ (kho ' + Object.keys(W).length.toLocaleString("vi-VN") + ' từ của app)</label>' +
+      '<input class="input" id="noteQ" placeholder="Gõ từ tiếng Anh hoặc nghĩa tiếng Việt" autocomplete="off" autocapitalize="none" spellcheck="false"><div id="noteRes"></div>' +
+      '<label class="lbl" for="noteTa" style="margin-top:12px;display:block">Ghi chú của Ngài</label><textarea class="input" id="noteTa" rows="5" placeholder="Ghi từ mới, mẹo, câu hay…"></textarea><p class="muted" style="font-size:12px;margin-top:4px">Lưu tự động trên thiết bị này.</p>';
+    $("#noteTa").value = S.notes || "";
+    var open = function (on) { panel.hidden = !on; btn.setAttribute("aria-expanded", on); if (on) $("#noteQ").focus(); };
+    btn.addEventListener("click", function () { open(panel.hidden); });
+    $("#noteClose").addEventListener("click", function () { open(false); btn.focus(); });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !panel.hidden) open(false); });
+    $("#noteTa").addEventListener("input", function (e) { clearTimeout(timer); var v = e.target.value; timer = setTimeout(function () { S.notes = v; save(); }, 400); });
+    $("#noteQ").addEventListener("input", function (e) {
+      var ids = noteSearch(e.target.value), box = $("#noteRes");
+      box.innerHTML = !e.target.value.trim() ? "" : ids.length ? ids.map(function (id) {
+        var w = W[id];
+        return '<div class="nres"><div><b>' + esc(w.w) + "</b> <span class=\"muted\">" + esc(w.ipa) + " · " + esc(w.pos) + (w.cefr ? " · " + w.cefr : "") + "</span><div>" + esc(w.vi) + '</div><div class="muted" style="font-size:13px">' + esc(w.ex) + '</div></div><div class="nbtn"><button class="btn small ghost" data-nsp="' + esc(id) + '" type="button">Nghe</button><button class="btn small ghost" data-nad="' + esc(id) + '" type="button">+ Ôn tập</button></div></div>';
+      }).join("") : '<p class="muted" style="margin-top:8px">Không có trong kho từ của app.</p>';
+    });
+    $("#noteRes").addEventListener("click", function (e) {
+      var s = e.target.closest ? e.target.closest("[data-nsp]") : null, a = e.target.closest ? e.target.closest("[data-nad]") : null;
+      if (s && W[s.getAttribute("data-nsp")]) speak(W[s.getAttribute("data-nsp")].w);
+      if (a) { forceReview(a.getAttribute("data-nad")); toast("Đã đưa từ này vào lịch ôn hôm nay."); renderNav(currentSec); }
+    });
   }
 
   /* ---------- Màn hình: Cài đặt, sao lưu ---------- */
@@ -641,33 +852,43 @@
   }
 
   /* ---------- Định tuyến ---------- */
+  var currentSec = "";
+  function setZen(on) {
+    document.body.classList.toggle("zen", on);
+    var z = $("#zenBtn"); z.textContent = on ? "Thoát Zen" : "Zen"; z.setAttribute("aria-pressed", on);
+  }
+  $("#zenBtn").addEventListener("click", function () { setZen(!document.body.classList.contains("zen")); });
   function route() {
     var p = location.hash.replace(/^#\/?/, "").split("/").filter(Boolean);
     var sec = p[0] || "", html = "", binder = null;
-    SESS = null;
+    SESS = null; currentSec = sec;
     window.scrollTo(0, 0);
+    setZen(false);
+    $("#zenBtn").hidden = !(sec === "grammar" && p[1] && !p[2]); // Zen chỉ có ở trang bài học
     if (sec === "") { html = viewDashboard(); binder = bindDashboard; }
     else if (sec === "grammar") {
       if (!p[1]) html = viewGrammarList();
-      else if (p[2] === "quiz") html = viewGrammarQuiz(p[1]);
-      else html = viewLesson(p[1]);
+      else if (p[2] === "quiz") html = viewGrammarQuiz(p[1], p[3]);
+      else { html = viewLesson(p[1]); binder = bindLesson; }
     } else if (sec === "vocab") {
       if (!p[1]) html = viewVocabList();
-      else if (p[2]) html = viewVocabSet(p[1], p[2]);
+      else if (p[2]) html = viewVocabSet(p[1], p[2], p[3]);
       else html = viewVocabTopic(p[1]);
     } else if (sec === "review") {
       if (p[1] === "weak") html = viewWeak();
-      else { html = viewReview(p[1] === "go"); if (html && p[1] !== "go") html += weakCard(); }
-    } else if (sec === "placement") html = viewPlacement();
+      else { html = viewReview(p[1] === "go"); if (html && p[1] !== "go") html += deckCard() + weakCard(); }
+    } else if (sec === "deck") { html = viewDeck(); binder = bindDeck; }
+    else if (sec === "placement") html = viewPlacement();
     else if (sec === "settings") { html = viewSettings(); binder = bindSettings; }
     else html = viewNotFound();
-    renderNav(sec === "placement" ? "grammar" : sec);
+    renderNav(sec === "placement" ? "grammar" : sec === "deck" ? "review" : sec);
     if (html !== null) { $("#view").innerHTML = html; if (binder) binder(); }
   }
   window.addEventListener("hashchange", route);
 
   /* ---------- Khởi động ---------- */
   applyTheme();
+  initNotebook();
   route();
   if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) {
     navigator.serviceWorker.register("sw.js").catch(function () { /* bỏ qua nếu không đăng ký được */ });
