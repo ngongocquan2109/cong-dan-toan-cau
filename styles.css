@@ -340,8 +340,9 @@ body.zen main { padding-bottom: 80px; }
   .card { padding: 18px; border-radius: 24px; }
   .toast { bottom: 84px; }
   .fabs { bottom: calc(82px + env(safe-area-inset-bottom)); left: 12px; }
-  .notepanel { bottom: calc(132px + env(safe-area-inset-bottom)); left: 12px; width: calc(100vw - 24px); max-height: 68vh; }
-  .schip { min-height: 46px; padding: 8px 12px; }
+  .notepanel { bottom: calc(132px + env(safe-area-inset-bottom)); left: 12px; width: calc(100vw - 24px); max-height: 74vh; }
+  .schip { min-height: 42px; padding: 6px 12px; }
+  .shint { display: none; }
   .schip small { display: none; }
   body.zen .fabs { bottom: calc(16px + env(safe-area-inset-bottom)); }
   body.zen .notepanel { bottom: calc(66px + env(safe-area-inset-bottom)); }
