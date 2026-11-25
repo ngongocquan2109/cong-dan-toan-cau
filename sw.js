@@ -1,5 +1,5 @@
 /* Service worker: lưu file app để dùng được khi mất mạng. */
-const CACHE = "nrcdtc-v15";
+const CACHE = "nrcdtc-v17";
 const FILES = [
   "./", "index.html", "styles.css", "app.js", "manifest.webmanifest", "icon.svg",
   "icons/avatar-160.png", "icons/favicon-32.png", "icons/icon-192.png", "icons/icon-512.png", "icons/icon-maskable-512.png", "icons/apple-touch-icon.png",
@@ -55,6 +55,6 @@ self.addEventListener("fetch", (e) => {
         caches.open(CACHE).then((c) => c.put(e.request, copy));
         return res;
       })
-      .catch(() => caches.match(e.request))
+      .catch(() => caches.match(e.request, { ignoreSearch: true }))
   );
 });

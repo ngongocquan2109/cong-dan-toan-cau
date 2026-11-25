@@ -4,6 +4,7 @@
   "use strict";
 
   /* ---------- Tiện ích ---------- */
+  var APP_VERSION = "v17"; // đổi cùng CACHE trong sw.js và ?v= trong index.html mỗi lần phát hành
   var KEY = "nrcdtc.v1";
   var INTERVALS = [0, 1, 3, 7, 14, 30]; // số ngày chờ theo "hộp" (spaced repetition)
   var $ = function (s, r) { return (r || document).querySelector(s); };
@@ -986,7 +987,19 @@
       '<div class="card"><h2>Sao lưu tiến độ</h2><p class="muted">Tiến độ chỉ lưu trên thiết bị này. Xuất file để chuyển sang máy khác hoặc phòng khi xóa dữ liệu trình duyệt.</p>' +
         '<div class="actions"><button class="btn" id="exp" type="button">Xuất file sao lưu</button><label class="btn ghost" style="cursor:pointer">Nhập file<input id="imp" type="file" accept="application/json" hidden></label></div></div>' +
       '<div class="card"><h2>Câu bị báo sai</h2><p class="muted">Đã ghi nhận ' + S.reports.length + ' câu. Danh sách này nằm trong file sao lưu để Đầy tớ xem lại và sửa nội dung.</p></div>' +
-      '<div class="card"><h2>Xóa tiến độ</h2><p class="muted">Xóa toàn bộ tiến độ trên thiết bị này. Nên xuất file sao lưu trước.</p><div class="actions"><button class="btn ghost" id="reset" type="button">Xóa tiến độ…</button></div></div></div>';
+      '<div class="card"><h2>Xóa tiến độ</h2><p class="muted">Xóa toàn bộ tiến độ trên thiết bị này. Nên xuất file sao lưu trước.</p><div class="actions"><button class="btn ghost" id="reset" type="button">Xóa tiến độ…</button></div></div>' +
+      '<div class="card"><h2>Phiên bản app</h2><p class="muted">Đang chạy bản <b>' + APP_VERSION + '</b>. Nếu tính năng mới chưa hiện, bấm nút dưới để tải lại bản mới nhất. Tiến độ học không bị mất.</p><div class="actions"><button class="btn" id="upd" type="button">Cập nhật bản mới nhất</button></div></div></div>';
+  }
+  function forceUpdate() { // xóa bộ nhớ đệm của app rồi tải lại; không đụng tới tiến độ học (localStorage)
+    toast("Đang tải bản mới nhất…");
+    var urls = [location.pathname];
+    document.querySelectorAll("script[src], link[rel=stylesheet], link[rel=manifest]").forEach(function (el) { urls.push(el.getAttribute("src") || el.getAttribute("href")); });
+    urls.push("sw.js");
+    var regs = "serviceWorker" in navigator ? navigator.serviceWorker.getRegistrations() : Promise.resolve([]);
+    regs.then(function (rs) { return Promise.all(rs.map(function (r) { return r.unregister(); })); })
+      .then(function () { return "caches" in window ? caches.keys().then(function (ks) { return Promise.all(ks.map(function (k) { return caches.delete(k); })); }) : null; })
+      .then(function () { return Promise.all(urls.map(function (u) { return fetch(u, { cache: "reload" }).catch(function () { /* bỏ qua */ }); })); })
+      .then(function () { location.reload(); }, function () { location.reload(); });
   }
   function bindSettings() {
     $("#goalIn").addEventListener("change", function (e) {
@@ -1034,6 +1047,7 @@
     });
     $("#exp").addEventListener("click", exportData);
     $("#imp").addEventListener("change", function (e) { if (e.target.files[0]) importData(e.target.files[0]); });
+    $("#upd").addEventListener("click", function () { forceUpdate(); });
     $("#reset").addEventListener("click", function () {
       if (confirm("Xóa toàn bộ tiến độ trên thiết bị này? Việc này không hoàn tác được.")) { S = defaults(); save(); applyTheme(); route(); toast("Đã xóa tiến độ."); }
     });
@@ -1070,6 +1084,7 @@
   function route() {
     var p = location.hash.replace(/^#\/?/, "").split("/").filter(Boolean);
     var sec = p[0] || "", html = "", binder = null;
+    if (window.__reloadLater) { location.reload(); return; } // có bản mới: tải lại khi Ngài chuyển trang
     SESS = null; currentSec = sec;
     window.scrollTo(0, 0);
     setZen(false);
@@ -1100,6 +1115,12 @@
   initNotebook();
   route();
   if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) {
-    navigator.serviceWorker.register("sw.js").catch(function () { /* bỏ qua nếu không đăng ký được */ });
+    var hadController = !!navigator.serviceWorker.controller, reloaded = false;
+    navigator.serviceWorker.addEventListener("controllerchange", function () { // bản mới vừa được kích hoạt
+      if (!hadController || reloaded) return;
+      reloaded = true;
+      if (SESS) { window.__reloadLater = true; toast("Có bản mới, sẽ cập nhật khi Ngài chuyển trang."); } else location.reload();
+    });
+    navigator.serviceWorker.register("sw.js").then(function (r) { r.update(); }).catch(function () { /* bỏ qua nếu không đăng ký được */ });
   }
 })();

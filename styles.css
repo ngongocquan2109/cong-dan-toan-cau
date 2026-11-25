@@ -324,21 +324,21 @@ body.zen main { padding-bottom: 80px; }
   .top { padding: 14px 16px 4px; }
   .brandtext small { display: none; }
   .pillnav {
-    position: fixed; bottom: calc(14px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); z-index: 40;
-    display: grid; grid-template-columns: repeat(5, 1fr); gap: 0;
-    width: calc(100vw - 20px); max-width: 440px;
+    position: fixed; bottom: calc(30px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); z-index: 40;
+    display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0;
+    width: calc(100vw - 20px); max-width: 440px; border: 1px solid rgba(255, 255, 255, .14); box-shadow: 0 10px 30px rgba(0, 0, 0, .45);
   }
-  .pillnav a { padding: 9px 2px; font-size: 12px; justify-content: center; text-align: center; }
+  .pillnav a { padding: 14px 0; font-size: clamp(12px, 3.5vw, 14px); white-space: nowrap; justify-content: center; text-align: center; }
   .badge { min-width: 16px; height: 16px; padding: 0 4px; font-size: 10px; }
-  main { padding: 10px 14px calc(120px + env(safe-area-inset-bottom)); }
+  main { padding: 10px 14px calc(150px + env(safe-area-inset-bottom)); }
   .hero, .two, .panel, .cols3 { grid-template-columns: 1fr; }
   .stats3 { gap: 6px; }
   .card { padding: 18px; border-radius: 24px; }
-  .toast { bottom: 84px; }
-  .fabs { bottom: calc(82px + env(safe-area-inset-bottom)); left: 12px; }
-  .notepanel { bottom: calc(132px + env(safe-area-inset-bottom)); left: 12px; width: calc(100vw - 24px); max-height: 58vh; }
-  body.zen .fabs { bottom: calc(16px + env(safe-area-inset-bottom)); }
-  body.zen .notepanel { bottom: calc(66px + env(safe-area-inset-bottom)); }
+  .toast { bottom: 110px; }
+  .fabs { bottom: calc(104px + env(safe-area-inset-bottom)); left: 12px; }
+  .notepanel { bottom: calc(156px + env(safe-area-inset-bottom)); left: 12px; width: calc(100vw - 24px); max-height: 58vh; }
+  body.zen .fabs { bottom: calc(30px + env(safe-area-inset-bottom)); }
+  body.zen .notepanel { bottom: calc(82px + env(safe-area-inset-bottom)); }
   .core { grid-template-columns: 1fr; }
   .lvls { grid-template-columns: 1fr 1fr; }
   .walkrow { grid-template-columns: 1fr; gap: 2px; }
