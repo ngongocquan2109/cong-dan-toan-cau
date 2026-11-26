@@ -400,3 +400,8 @@ body.zen main { padding-bottom: 80px; }
 .bookrow .bg { grid-column: 2; color: var(--muted); font-size: 13px; }
 .bookrow .pill { grid-row: 1 / span 2; grid-column: 3; }
 .syncerr { margin: 8px 0; padding: 8px 12px; border-radius: 12px; background: rgba(220, 80, 80, .14); color: #e07a7a; font-size: 14px; }
+.syfield { margin: 12px 0 0; }
+.syfield label { display: block; margin-bottom: 6px; font-size: 14px; color: var(--muted); }
+.syfield .input { width: 100%; box-sizing: border-box; min-height: 50px; font-size: 17px; padding: 12px 14px; }
+.syshow { display: flex; align-items: center; gap: 10px; margin: 12px 0 4px; font-size: 15px; cursor: pointer; }
+.syshow input { width: 20px; height: 20px; }

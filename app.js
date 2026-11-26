@@ -4,7 +4,7 @@
   "use strict";
 
   /* ---------- Tiện ích ---------- */
-  var APP_VERSION = "v23"; // đổi cùng CACHE trong sw.js và ?v= trong index.html mỗi lần phát hành
+  var APP_VERSION = "v24"; // đổi cùng CACHE trong sw.js và ?v= trong index.html mỗi lần phát hành
   var KEY = "nrcdtc.v1";
   var INTERVALS = [0, 1, 3, 7, 14, 30]; // số ngày chờ theo "hộp" (spaced repetition)
   var $ = function (s, r) { return (r || document).querySelector(s); };
@@ -1324,16 +1324,21 @@
         '<div class="actions"><button class="btn" id="syNow" type="button"' + (Y.busy ? " disabled" : "") + ">" + (Y.busy ? "Đang đồng bộ…" : "Đồng bộ ngay") + '</button><button class="btn ghost" id="syOut" type="button">Đăng xuất</button></div>';
     }
     return '<h2>Đồng bộ giữa các thiết bị</h2><p class="muted">Đăng nhập cùng một tài khoản trên máy tính và điện thoại để tiến độ tự đồng bộ. Miễn phí, không dùng AI.</p>' +
-      '<div class="field"><span>Email</span><input class="input" id="syEmail" type="email" autocomplete="username" inputmode="email" autocapitalize="none"></div>' +
-      '<div class="field"><span>Mật khẩu</span><input class="input" id="syPass" type="password" autocomplete="current-password"></div>' + err +
+      '<div class="syfield"><label for="syEmail">Email</label><input class="input" id="syEmail" type="email" autocomplete="username" inputmode="email" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="ten@gmail.com"></div>' +
+      '<div class="syfield"><label for="syPass">Mật khẩu</label><input class="input" id="syPass" type="password" autocomplete="current-password" placeholder="Ít nhất 6 ký tự"></div>' +
+      '<label class="syshow"><input type="checkbox" id="syShow"> Hiện mật khẩu</label>' + err +
       '<div class="actions"><button class="btn" id="syIn" type="button"' + (Y.busy ? " disabled" : "") + '>Đăng nhập</button><button class="btn ghost" id="syUp" type="button"' + (Y.busy ? " disabled" : "") + '>Tạo tài khoản</button><button class="link" id="syForgot" type="button">Quên mật khẩu</button></div>';
   }
   function bindSyncBox() {
     var box = $("#syncBox"); if (!box) return;
-    var keep = { e: ($("#syEmail") || {}).value, p: ($("#syPass") || {}).value };
+    var keep = { e: ($("#syEmail") || {}).value, p: ($("#syPass") || {}).value, s: !!($("#syShow") || {}).checked };
     box.innerHTML = syncBoxHtml();
     if ($("#syEmail") && keep.e) $("#syEmail").value = keep.e;
     if ($("#syPass") && keep.p) $("#syPass").value = keep.p;
+    if ($("#syShow")) {
+      $("#syShow").checked = keep.s; $("#syPass").type = keep.s ? "text" : "password";
+      $("#syShow").addEventListener("change", function () { $("#syPass").type = this.checked ? "text" : "password"; });
+    }
     var go = function (fn) { var e = ($("#syEmail") || {}).value, pw = ($("#syPass") || {}).value; if (!e) { toast("Hãy nhập email."); return; } fn(e.trim(), pw || ""); };
     var b;
     if ((b = $("#syIn"))) b.addEventListener("click", function () { go(function (e, pw) { NRSync.signIn(e, pw); }); });
