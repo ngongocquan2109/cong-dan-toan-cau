@@ -330,7 +330,7 @@ body.zen main { padding-bottom: 80px; }
   }
   .pillnav a { padding: 14px 0; font-size: clamp(10.5px, 3vw, 13px); white-space: nowrap; justify-content: center; text-align: center; }
   .badge { min-width: 16px; height: 16px; padding: 0 4px; font-size: 10px; }
-  main { padding: 10px 14px calc(150px + env(safe-area-inset-bottom)); }
+  main { padding: 10px 14px 10px; }
   .two, .panel, .cols3 { grid-template-columns: 1fr; }
   .hero { grid-template-columns: 1fr 1fr; gap: 12px; } /* điện thoại: thẻ XP bên trái, đồng hồ bên phải cho đỡ dài */
   .hero > :first-child { grid-column: 1 / -1; }
@@ -405,3 +405,5 @@ body.zen main { padding-bottom: 80px; }
 .syfield .input { width: 100%; box-sizing: border-box; min-height: 50px; font-size: 17px; padding: 12px 14px; }
 .syshow { display: flex; align-items: center; gap: 10px; margin: 12px 0 4px; font-size: 15px; cursor: pointer; }
 .syshow input { width: 20px; height: 20px; }
+.sitefoot { text-align: center; color: var(--muted); font-size: 13px; line-height: 1.5; padding: 28px 16px 48px; max-width: 720px; margin: 0 auto; }
+@media (max-width: 760px) { .sitefoot { padding-bottom: calc(200px + env(safe-area-inset-bottom)); } }
