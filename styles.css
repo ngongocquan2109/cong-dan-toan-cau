@@ -384,3 +384,18 @@ body.zen main { padding-bottom: 80px; }
 .wd.hit i { background: var(--lime); border-color: var(--lime2); }
 .wd.now span { font-weight: 700; color: inherit; }
 .wd.fut i { opacity: .45; border-style: dashed; }
+/* v22: Viết về bạn, sắp xếp từ, đối chiếu sách */
+.sw { margin: 14px 0; }
+.sw textarea { width: 100%; margin: 8px 0 6px; resize: vertical; }
+.swmodel { margin-top: 6px; padding: 10px 12px; border-radius: 12px; background: var(--chip); }
+.orderans { min-height: 56px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 12px; margin: 14px 0 10px; border: 1px dashed var(--line); border-radius: 14px; }
+.orderpool { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 14px; }
+.tok { font: inherit; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--chip); color: inherit; cursor: pointer; }
+.tok.ghost { opacity: .3; cursor: default; }
+.orderans .tok { background: var(--lime); border-color: var(--lime2); color: #1b2a00; }
+.bookbox { padding: 6px 14px; }
+.bookrow { display: grid; grid-template-columns: 42px 1fr auto; gap: 4px 12px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); text-decoration: none; color: inherit; }
+.bookrow:first-child { border-top: 0; }
+.bookrow .bu { font-weight: 700; color: var(--muted); }
+.bookrow .bg { grid-column: 2; color: var(--muted); font-size: 13px; }
+.bookrow .pill { grid-row: 1 / span 2; grid-column: 3; }

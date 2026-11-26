@@ -4,7 +4,7 @@
   "use strict";
 
   /* ---------- Tiện ích ---------- */
-  var APP_VERSION = "v21"; // đổi cùng CACHE trong sw.js và ?v= trong index.html mỗi lần phát hành
+  var APP_VERSION = "v22"; // đổi cùng CACHE trong sw.js và ?v= trong index.html mỗi lần phát hành
   var KEY = "nrcdtc.v1";
   var INTERVALS = [0, 1, 3, 7, 14, 30]; // số ngày chờ theo "hộp" (spaced repetition)
   var $ = function (s, r) { return (r || document).querySelector(s); };
@@ -33,12 +33,14 @@
   var VO = window.VOCAB || [];
   var TL = window.TAG_LABELS || {};
   var GP = window.GRAMMAR_PLUS || {};
+  var SEE = window.GRAMMAR_SEE || {}; // bài nên xem thêm của các chủ điểm cũ
   var VC = window.VOCAB_CEFR || {}; // bậc CEFR ước lượng của từng chủ đề từ vựng
   var RANK = { A1: 1, A2: 2, B1: 3, B2: 4, C1: 5, C2: 6 };
   var CEFR_NAME = { A1: "Nền tảng câu tiếng Anh", A2: "Mở rộng thì và cấu trúc", B1: "Câu phức cơ bản" };
   var LV = { e: "Dễ", m: "Vừa", h: "Khó" };
   // Gắn bậc CEFR, mức khó, lỗi thường gặp, câu hỏi mới vào từng chủ đề, rồi xếp lộ trình theo bậc.
   GR.forEach(function (t) {
+    t.see = t.see || SEE[t.id];
     var p = GP[t.id]; if (!p) { t.cefr = t.cefr || "A1"; t.questions.forEach(function (q) { q.lv = q.lv || "m"; }); return; }
     t.cefr = p.cefr; t.formula = p.formula; t.walk = p.walk; t.mistakes = p.mistakes; t.check = p.check;
     t.questions.forEach(function (q, i) { q.lv = p.lv.charAt(i) || "m"; });
@@ -67,7 +69,7 @@
 
   /* ---------- Trạng thái lưu trữ ---------- */
   function defaults() {
-    return { version: 1, goal: 10, theme: null, voice: null, xp: 0, days: {}, srs: {}, errors: {}, topics: {}, reports: [], badges: {}, lvl: {}, deck: {}, notes: "" };
+    return { version: 1, goal: 10, theme: null, voice: null, xp: 0, days: {}, srs: {}, errors: {}, topics: {}, reports: [], badges: {}, lvl: {}, deck: {}, notes: "", selfwrite: {} };
   }
   function load() {
     try { var r = JSON.parse(localStorage.getItem(KEY)); return Object.assign(defaults(), r || {}); }
@@ -619,7 +621,10 @@
       (S.placement && S.placement.gl !== undefined ? "Lần gần nhất " + S.placement.at + ": ngữ pháp " + dispLv(S.placement.gl) + ", từ vựng " + dispLv(S.placement.vl) + ". Làm lại sau vài tuần để xem tiến bộ."
         : S.placement ? "Bản cũ làm ngày " + S.placement.at + ". Làm lại để biết bậc CEFR." : "Khoảng 15 phút: xác định bậc ngữ pháp, bậc từ vựng và chủ đề nào nên học trước.") +
       '</p></div><a class="btn" href="#/placement">' + (S.placement ? "Làm lại" : "Bắt đầu") + "</a></div>";
-    var out = '<h1 style="margin-top:12px">Ngữ pháp</h1><p class="muted">Học theo bậc CEFR từ A1. Mỗi bài có lý thuyết, lỗi thường gặp và bài tập ba mức Dễ, Vừa, Khó. Qua 80% mỗi mức thì được 1 sao.</p>' + banner;
+    var tools = '<div class="card" style="margin-top:16px"><h3>Công cụ ôn luyện</h3><div class="actions" style="margin-top:10px">' +
+      '<a class="btn small" href="#/grammar/mix/A1">Ôn tổng hợp A1</a><a class="btn small" href="#/grammar/mix/A2">Ôn tổng hợp A2</a><a class="btn small" href="#/grammar/mix/B1">Ôn tổng hợp B1</a><a class="btn small ghost" href="#/grammar/mix/all">Trộn tất cả</a>' +
+      '<a class="btn small ghost" href="#/book">Đối chiếu sách Murphy (115 unit)</a><a class="btn small ghost" href="#/appendix">Phụ lục tra cứu</a></div></div>';
+    var out = '<h1 style="margin-top:12px">Ngữ pháp</h1><p class="muted">Học theo bậc CEFR từ A1. Mỗi bài có lý thuyết, lỗi thường gặp và bài tập ba mức Dễ, Vừa, Khó. Qua 80% mỗi mức thì được 1 sao.</p>' + banner + tools;
     var cur = null;
     GR.forEach(function (t) {
       if (t.cefr !== cur) {
@@ -676,10 +681,34 @@
       ["e", "m", "h"].map(function (l, i) {
         var b = lvBest(t, l);
         return '<a class="lvbtn" href="#/grammar/' + t.id + "/quiz/" + l + '"><b>' + LV[l] + "</b><span class=\"stars\">" + "★".repeat(i + 1) + "☆".repeat(2 - i) + "</span><small>" + nq(l) + " câu" + (b ? " · tốt nhất " + b + "%" : "") + "</small>" + (b >= 80 ? '<i class="got">Đã đạt</i>' : "") + "</a>";
-      }).join("") + '<a class="lvbtn all" href="#/grammar/' + t.id + '/quiz/all"><b>Tất cả</b><span>Trộn mọi mức</span><small>' + t.questions.length + " câu</small></a></div></div></div>";
-    return html;
+      }).join("") + '<a class="lvbtn all" href="#/grammar/' + t.id + '/quiz/all"><b>Tất cả</b><span>Trộn mọi mức</span><small>' + t.questions.length + ' câu</small></a></div><div class="actions"><a class="btn ghost small" href="#/grammar/' + t.id + '/order">Sắp xếp từ thành câu</a></div></div>';
+    if (t.selfWrite) {
+      var sw = (S.selfwrite && S.selfwrite[t.id]) || [];
+      html += '<div class="card sec" id="selfWrite" data-tid="' + t.id + '"><h2>Viết về bạn</h2><p class="muted">Tự viết câu của riêng bạn để nhớ lâu hơn. App không chấm; viết xong hãy bấm xem bài mẫu để so sánh.</p>' +
+        t.selfWrite.map(function (q, i) {
+          return '<div class="sw"><b>' + esc(q[0]) + '</b><textarea class="input" data-sw="' + i + '" rows="2" placeholder="Viết câu tiếng Anh của bạn…">' + esc(sw[i] || "") + '</textarea>' +
+            '<button class="link" type="button" data-swshow="' + i + '">Xem bài mẫu</button><p class="swmodel" hidden><b>Bài mẫu:</b> ' + esc(q[1]) + "</p></div>";
+        }).join("") + "</div>";
+    }
+    if (t.see && t.see.length) {
+      var links = t.see.map(function (id) { var o = GR.filter(function (x) { return x.id === id; })[0]; return o ? '<a class="btn ghost small" href="#/grammar/' + o.id + '">' + esc(o.title) + "</a>" : ""; }).join("");
+      if (links) html += '<div class="card sec"><h2>Xem thêm</h2><p class="muted">Các bài liên quan nên học tiếp.</p><div class="actions">' + links + "</div></div>";
+    }
+    return html + "</div>";
   }
   function bindLesson() {
+    var swc = $("#selfWrite");
+    if (swc) {
+      swc.querySelectorAll("textarea[data-sw]").forEach(function (ta) {
+        ta.addEventListener("input", function () {
+          var tid = swc.getAttribute("data-tid"), arr = (S.selfwrite[tid] = S.selfwrite[tid] || []);
+          arr[Number(ta.getAttribute("data-sw"))] = ta.value; save();
+        });
+      });
+      swc.querySelectorAll("[data-swshow]").forEach(function (b) {
+        b.addEventListener("click", function () { var m = b.parentNode.querySelector(".swmodel"); m.hidden = !m.hidden; b.textContent = m.hidden ? "Xem bài mẫu" : "Ẩn bài mẫu"; });
+      });
+    }
     document.querySelectorAll(".addrev").forEach(function (b) {
       b.addEventListener("click", function () {
         var ok = addDeck(b.getAttribute("data-f"), b.getAttribute("data-b"));
@@ -743,7 +772,7 @@
     });
   }
   function startSession(cfg) {
-    SESS = Object.assign({ i: 0, ok: 0, bad: 0, rem: 0, forgot: 0, answered: false, picked: null, flip: false, wrong: [], xp0: S.xp, byTopic: {}, grp: {} }, cfg);
+    SESS = Object.assign({ chosen: [], i: 0, ok: 0, bad: 0, rem: 0, forgot: 0, answered: false, picked: null, flip: false, wrong: [], xp0: S.xp, byTopic: {}, grp: {} }, cfg);
     SESS.items = cfg.build();
     renderSession();
   }
@@ -768,6 +797,13 @@
                    '<div class="rate"><button class="btn ghost" data-act="forgot" type="button">Chưa nhớ</button><button class="btn" data-act="remember" type="button">Đã nhớ</button></div>' +
                    (/^[vp]/.test(it.id) ? '<div style="margin-top:10px"><button class="link" data-act="addrev" type="button">+ Ôn tập: đưa từ này vào lịch ôn hôm nay</button></div>' : "")
                  : '<div class="rate"><button class="btn dark" data-act="flip" type="button">Lật thẻ</button></div>') + "</div>";
+    } else if (it.kind === "order") {
+      var tok = function (act, i) { return '<button class="tok" type="button" data-act="' + act + '" data-i="' + i + '"' + (s.answered ? " disabled" : "") + ">" + esc(it.words[i]) + "</button>"; };
+      html = '<div class="card"><p class="eyebrow">Sắp xếp các từ thành câu đúng</p><div class="q">' + esc(it.q) + "</div>" +
+        '<div class="orderans">' + (s.chosen.length ? s.chosen.map(function (i) { return tok("wunpick", i); }).join("") : '<span class="muted">Bấm các từ bên dưới theo đúng thứ tự…</span>') + "</div>" +
+        '<div class="orderpool">' + it.words.map(function (wd, i) { return s.chosen.indexOf(i) >= 0 ? '<span class="tok ghost">' + esc(wd) + "</span>" : tok("wpick", i); }).join("") + "</div>" +
+        (s.answered ? '<div class="feedback ' + (s.lastOk ? "good" : "bad") + '"><b>' + (s.lastOk ? "Đúng rồi!" : "Chưa đúng. Câu đúng: " + esc(it.answer)) + "</b></div><div class=\"actions\"><button class=\"btn\" data-act=\"next\" type=\"button\">Tiếp tục</button></div>"
+          : '<div class="actions"><button class="btn" data-act="wcheck" type="button">Kiểm tra</button><button class="btn ghost" data-act="wreset" type="button">Làm lại</button></div>') + "</div>";
     } else if (it.kind === "dict") {
       html = '<div class="card flash"><p class="eyebrow">Nghe và viết lại từ tiếng Anh</p><button class="btn dark speakbig" data-act="speak" type="button" aria-label="Nghe từ">🔊 Nghe</button>' +
         '<p class="muted" style="margin-top:12px">Gợi ý: ' + esc(it.w.vi) + (it.w.pos ? " (" + esc(it.w.pos) + ")" : "") + "</p>" +
@@ -821,14 +857,23 @@
       s.picked = v; s.answered = true; s.lastOk = it.answers.some(function (x) { return norm(x) === norm(v); });
       finishAnswer(it); return;
     }
-    if (a === "next") { s.i++; s.answered = false; s.picked = null; renderSession(); return; }
+    if (a === "next") { s.i++; s.answered = false; s.picked = null; s.chosen = []; renderSession(); return; }
+    if (a === "wpick" && !s.answered) { s.chosen.push(Number(el.getAttribute("data-i"))); renderSession(); return; }
+    if (a === "wunpick" && !s.answered) { var wi = Number(el.getAttribute("data-i")); s.chosen = s.chosen.filter(function (x) { return x !== wi; }); renderSession(); return; }
+    if (a === "wreset" && !s.answered) { s.chosen = []; renderSession(); return; }
+    if (a === "wcheck" && !s.answered) {
+      if (!s.chosen.length) { toast("Hãy chọn các từ trước."); return; }
+      s.picked = s.chosen.map(function (i) { return it.words[i]; }).join(" "); s.answered = true; s.lastOk = norm(s.picked) === norm(it.target);
+      finishAnswer(it); return;
+    }
     if (a === "report") {
       S.reports.push({ id: it.id, at: new Date().toISOString() }); save(); toast("Đã ghi nhận câu này để kiểm tra lại.");
     }
   }
   function finishAnswer(it) {
     var s = SESS;
-    if (!it.noRecord) recordAnswer(it.id, s.lastOk, it.tag);
+    if (it.plain) { var dd = day(today()); dd.done++; if (s.lastOk) { dd.correct++; S.xp += 10; } else dd.wrong++; checkBadges(); save(); }
+    else if (!it.noRecord) recordAnswer(it.id, s.lastOk, it.tag);
     if (it.grp) { var gg = s.grp[it.grp] || (s.grp[it.grp] = { ok: 0, n: 0 }); gg.n++; if (s.lastOk) gg.ok++; }
     if (s.lastOk) s.ok++; else { s.bad++; s.wrong.push({ q: it.q, a: it.answer }); }
     if (it.topic) { var b = s.byTopic[it.topic] || (s.byTopic[it.topic] = { ok: 0, n: 0 }); b.n++; if (s.lastOk) b.ok++; }
@@ -948,6 +993,86 @@
       }
     };
     cfg.cfg = cfg; startSession(cfg); return null;
+  }
+
+  /* ---------- Ôn tổng hợp, sắp xếp câu, đối chiếu sách, phụ lục ---------- */
+  function viewGrammarMix(level) {
+    var lv = RANK[level] ? level : "all", ids = [];
+    GR.forEach(function (t) { if (lv === "all" || t.cefr === lv) t.questions.forEach(function (q) { ids.push("g:" + t.id + ":" + q.id); }); });
+    var cfg = {
+      title: "Ôn tổng hợp ngữ pháp" + (lv === "all" ? "" : " " + lv), exit: "#/grammar", nav: "grammar",
+      build: function () { return shuffle(ids).slice(0, 20).map(function (id) { var it = mkQuestion(id); it.topic = Q[id].gid; return it; }); },
+      extra: function (s) {
+        var weak = Object.keys(s.byTopic).filter(function (k) { return s.byTopic[k].ok < s.byTopic[k].n; });
+        if (!weak.length) return "";
+        return '<div class="feedback"><b>Nên xem lại các bài:</b><div class="actions" style="margin-top:8px">' + weak.map(function (k) {
+          var t = GR.filter(function (x) { return x.id === k; })[0]; return t ? '<a class="btn ghost small" href="#/grammar/' + t.id + '">' + esc(t.title) + "</a>" : "";
+        }).join("") + "</div></div>";
+      }
+    };
+    cfg.cfg = cfg; startSession(cfg); return null;
+  }
+  function orderSentences(t) { // lấy câu ví dụ ngắn, một câu, trong bài học để luyện sắp xếp
+    var out = [], seen = {};
+    var add = function (en, vi) {
+      if (!en || !vi || seen[en]) return;
+      if (/[\u2192\/\u2014"]|^'|'\s*'|\.\s+[A-Z]/.test(en) || !/[.?!]$/.test(en)) return;
+      var n = en.split(" ").length; if (n < 3 || n > 10) return;
+      seen[en] = 1; out.push({ en: en, vi: String(vi).replace(/\s*\(.*\)\s*$/, "") });
+    };
+    t.sections.forEach(function (sc) { sc.examples.forEach(function (e) { add(e.en, e.vi); }); });
+    (t.walk || []).forEach(function (e) { add(e.en, e.vi); });
+    return out;
+  }
+  function viewGrammarOrder(id) {
+    var t = GR.filter(function (x) { return x.id === id; })[0]; if (!t) return viewNotFound();
+    var pool = orderSentences(t);
+    if (pool.length < 3) return '<div class="card empty" style="max-width:560px;margin:20px auto"><h1>Chưa có đủ câu để luyện</h1><p class="muted">Bài này chưa có đủ câu ví dụ ngắn.</p><div class="actions" style="justify-content:center"><a class="btn" href="#/grammar/' + t.id + '">Về bài học</a></div></div>';
+    var cfg = {
+      title: t.title + " · sắp xếp câu", exit: "#/grammar/" + t.id, nav: "grammar",
+      build: function () {
+        return shuffle(pool).slice(0, 10).map(function (e, i) {
+          var target = e.en.replace(/[.?!]$/, ""), words = target.split(" ");
+          var order = shuffle(words.map(function (x, k) { return k; }));
+          return { kind: "order", plain: true, id: "o:" + t.id + ":" + i, q: e.vi, answer: e.en, target: target, words: order.map(function (k) { return words[k]; }) };
+        });
+      }
+    };
+    cfg.cfg = cfg; startSession(cfg); return null;
+  }
+  function viewBook() {
+    var rows = (window.BOOK_UNITS || []).map(function (u) {
+      var t = GR.filter(function (x) { return x.id === u[2]; })[0]; if (!t) return "";
+      return '<a class="bookrow" href="#/grammar/' + t.id + '" data-q="' + esc((u[0] + " " + u[1] + " " + t.title).toLowerCase()) + '"><span class="bu">' + u[0] + '</span><span class="bt">' + esc(u[1]) + '</span><span class="bg">' + esc(t.title) + "</span>" + pill(gStatus(t)) + "</a>";
+    }).join("");
+    return '<div class="lesson"><a class="back" href="#/grammar">← Ngữ pháp</a><h1>Đối chiếu sách Murphy</h1><p class="muted">Sách <i>Essential Grammar in Use</i> (Elementary) có 115 unit. Bảng dưới cho biết mỗi unit được dạy ở bài nào trong app. Nội dung trong app được viết lại bằng tiếng Việt, theo cách học thống nhất của app.</p>' +
+      '<input class="input" id="bookFilter" placeholder="Lọc: gõ số unit hoặc từ khóa (ví dụ 29, might, passive)…" style="margin:12px 0"><div class="card sec bookbox">' + rows + "</div></div>";
+  }
+  function bindBook() {
+    var f = $("#bookFilter"); if (!f) return;
+    f.addEventListener("input", function () {
+      var q = f.value.trim().toLowerCase();
+      document.querySelectorAll(".bookrow").forEach(function (r) { r.style.display = !q || r.getAttribute("data-q").indexOf(q) >= 0 ? "" : "none"; });
+    });
+  }
+  function viewAppendix() {
+    var A = window.APPENDIX || {}, add = function (en, vi) { return '<button class="addrev" type="button" data-f="' + esc(en) + '" data-b="' + esc(vi) + '">+ Ôn tập</button>'; };
+    var irr = (A.irregular || []).map(function (g) {
+      return '<h3 style="margin-top:16px">' + esc(g.title) + '</h3><table class="t"><thead><tr><th>V1</th><th>V2</th><th>V3</th></tr></thead><tbody>' +
+        g.rows.map(function (r) { return "<tr><td>" + esc(r[0]) + "</td><td>" + esc(r[1]) + "</td><td>" + esc(r[2]) + "</td></tr>"; }).join("") + "</tbody></table>";
+    }).join("");
+    var sf = A.shortForms || { rows: [], notes: [] };
+    var short = '<p>' + esc(sf.intro || "") + '</p><table class="t"><thead><tr><th>Đầy đủ</th><th>Viết tắt</th></tr></thead><tbody>' + sf.rows.map(function (r) { return "<tr><td>" + esc(r[0]) + "</td><td>" + esc(r[1]) + "</td></tr>"; }).join("") + "</tbody></table>" +
+      "<ul>" + sf.notes.map(function (n) { return "<li>" + esc(n) + "</li>"; }).join("") + "</ul>";
+    var sp = (A.spelling || []).map(function (x) { return '<h3 style="margin-top:14px">' + esc(x.title) + "</h3><p>" + esc(x.body) + "</p>"; }).join("");
+    var ph = (A.phrasal || []).map(function (g) {
+      return '<h3 style="margin-top:16px">' + esc(g.title) + '</h3><ul class="ex">' + g.rows.map(function (r) { return "<li><div><b>" + esc(r[0]) + " — " + esc(r[1]) + "</b><span>" + esc(r[2]) + "</span></div>" + add(r[0] + " (" + r[2] + ")", r[1]) + "</li>"; }).join("") + "</ul>";
+    }).join("");
+    return '<div class="lesson"><a class="back" href="#/grammar">← Ngữ pháp</a><h1>Phụ lục tra cứu</h1><p class="muted">Bảng tra nhanh: động từ bất quy tắc, viết tắt, chính tả, cụm động từ.</p>' +
+      '<div class="card sec"><h2>Động từ bất quy tắc theo nhóm</h2><p class="muted">Học theo nhóm có chung quy luật sẽ dễ nhớ hơn học theo thứ tự chữ cái.</p>' + irr + "</div>" +
+      '<div class="card sec"><h2>Dạng viết tắt</h2>' + short + "</div>" +
+      '<div class="card sec"><h2>Quy tắc chính tả</h2>' + sp + "</div>" +
+      '<div class="card sec"><h2>Cụm động từ thông dụng</h2><p class="muted">Bấm + Ôn tập để đưa cụm vào lịch ôn.</p>' + ph + "</div></div>";
   }
 
   /* ---------- Mẫu câu giao tiếp theo tình huống ---------- */
@@ -1274,13 +1399,17 @@
     if (sec === "") { html = viewDashboard(); binder = bindDashboard; }
     else if (sec === "grammar") {
       if (!p[1]) html = viewGrammarList();
+      else if (p[1] === "mix") html = viewGrammarMix(p[2]);
       else if (p[2] === "quiz") html = viewGrammarQuiz(p[1], p[3]);
+      else if (p[2] === "order") html = viewGrammarOrder(p[1]);
       else { html = viewLesson(p[1]); binder = bindLesson; }
     } else if (sec === "vocab") {
       if (!p[1]) html = viewVocabList();
       else if (p[2]) html = viewVocabSet(p[1], p[2], p[3]);
       else html = viewVocabTopic(p[1]);
-    } else if (sec === "phrases") {
+    } else if (sec === "book") { html = viewBook(); binder = bindBook; }
+    else if (sec === "appendix") { html = viewAppendix(); binder = bindLesson; }
+    else if (sec === "phrases") {
       if (!p[1]) html = viewPhraseList();
       else if (p[2]) html = viewPhraseSession(p[1], p[2]);
       else { html = viewPhraseTopic(p[1]); binder = bindPhrases; }
@@ -1291,7 +1420,7 @@
     else if (sec === "placement") html = p[1] === "skip" ? togglePlacementSkip() : viewPlacement();
     else if (sec === "settings") { html = viewSettings(); binder = bindSettings; }
     else html = viewNotFound();
-    renderNav(sec === "placement" ? "grammar" : sec === "deck" ? "review" : sec);
+    renderNav(sec === "placement" || sec === "book" || sec === "appendix" ? "grammar" : sec === "deck" ? "review" : sec);
     if (html !== null) { $("#view").innerHTML = html; if (binder) binder(); }
   }
   window.addEventListener("hashchange", route);
