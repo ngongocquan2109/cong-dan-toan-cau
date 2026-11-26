@@ -359,3 +359,13 @@ body.zen main { padding-bottom: 80px; }
   .prow .bar { grid-column: 1 / 4; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+.check span b { display: block; font-weight: 700; }
+.check span small { display: block; margin-top: 3px; color: var(--muted); font-size: 14px; line-height: 1.5; }
+.fbl { display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin-right: 6px; }
+.fbvi { font-style: italic; }
+.vf { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; margin: 6px 0; font-size: 14px; }
+.vf i { font-style: normal; font-size: 11px; font-weight: 700; color: var(--muted); margin-right: 4px; }
+.vf em { font-style: normal; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--chip); }
+.vf em.irr { color: #c2410c; }
+.vf em.reg { color: #15803d; }

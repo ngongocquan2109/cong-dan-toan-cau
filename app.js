@@ -4,7 +4,7 @@
   "use strict";
 
   /* ---------- Tiện ích ---------- */
-  var APP_VERSION = "v19"; // đổi cùng CACHE trong sw.js và ?v= trong index.html mỗi lần phát hành
+  var APP_VERSION = "v20"; // đổi cùng CACHE trong sw.js và ?v= trong index.html mỗi lần phát hành
   var KEY = "nrcdtc.v1";
   var INTERVALS = [0, 1, 3, 7, 14, 30]; // số ngày chờ theo "hộp" (spaced repetition)
   var $ = function (s, r) { return (r || document).querySelector(s); };
@@ -50,6 +50,7 @@
   GR.forEach(function (t) {
     t.questions.forEach(function (q) { Q["g:" + t.id + ":" + q.id] = Object.assign({ gid: t.id }, q); });
   });
+  var GE = window.GRAMMAR_EXPLAIN || {};
   var W = {}; // id đầy đủ -> từ
   VO.forEach(function (t) {
     t.sets.forEach(function (s) {
@@ -636,8 +637,9 @@
         }).join("") + "</div>";
     }
     if (t.check) {
-      html += '<div class="card sec"><h2>Tự kiểm tra trước khi làm bài</h2><ul class="check">' + t.check.map(function (c, i) {
-        return '<li><label><input type="checkbox"> <span>' + esc(c) + "</span></label></li>";
+      html += '<div class="card sec"><h2>Nhẩm nhanh trước khi làm bài</h2><p class="muted">Bốn câu tự hỏi khi gặp một câu bài tập. Đọc phần gợi ý bên dưới, hiểu rồi thì tích vào ô.</p><ul class="check">' + t.check.map(function (c, i) {
+        var pr = c.split(" || ");
+        return '<li><label><input type="checkbox"> <span><b>' + esc(pr[0]) + "</b>" + (pr[1] ? "<small>" + esc(pr[1]) + "</small>" : "") + "</span></label></li>";
       }).join("") + "</ul></div>";
     }
     var nq = function (l) { return t.questions.filter(function (q) { return q.lv === l; }).length; };
@@ -686,7 +688,7 @@
   var SESS = null;
   function mkQuestion(id) {
     var q = Q[id];
-    return { kind: q.type === "fill" ? "fill" : "mc", id: id, q: q.q, options: q.options ? shuffle(q.options) : null, answer: q.answer, answers: q.answers, explain: q.explain, tag: q.tag };
+    return { kind: q.type === "fill" ? "fill" : "mc", id: id, q: q.q, options: q.options ? shuffle(q.options) : null, answer: q.answer, answers: q.answers, explain: q.explain, tag: q.tag, vi: (GE[id.slice(2)] || [])[0], deep: (GE[id.slice(2)] || [])[1] };
   }
   function mkCard(id) {
     if (id.charAt(0) === "d") { var d = S.deck[id]; return { kind: "card", id: id, w: { w: d.f, ipa: "", pos: "", vi: d.b, ex: "", exVi: "" } }; }
@@ -753,7 +755,7 @@
       }
       var fb = "";
       if (s.answered) {
-        fb = '<div class="feedback ' + (s.lastOk ? "good" : "bad") + '"><b>' + (s.lastOk ? "Đúng rồi!" : "Chưa đúng. Đáp án: " + esc(it.answer)) + "</b><p>" + esc(it.explain) + "</p></div>" +
+        fb = '<div class="feedback ' + (s.lastOk ? "good" : "bad") + '"><b>' + (s.lastOk ? "Đúng rồi!" : "Chưa đúng. Đáp án: " + esc(it.answer)) + "</b>" + (it.vi ? '<p class="fbvi"><span class="fbl">Dịch nghĩa</span> ' + esc(it.vi) + "</p>" : "") + "<p>" + (it.deep ? '<span class="fbl">Giải thích</span> ' + esc(it.deep) : esc(it.explain)) + "</p></div>" +
           '<div class="actions"><button class="btn" data-act="next" type="button">Tiếp tục</button><button class="link" data-act="report" type="button">Báo câu này sai</button></div>';
       }
       html = '<div class="card"><p class="eyebrow">' + (it.kind === "fill" ? "Điền vào chỗ trống" : "Chọn đáp án đúng") + '</p><div class="q">' + qhtml + "</div>" + body + fb + "</div>";
@@ -954,6 +956,39 @@
 
   /* ---------- Sổ tay: tra từ trong kho 1.000 từ và ghi chú ---------- */
   var plain = function (s) { return norm(s).normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/g, "d"); };
+
+  /* ---------- Dạng động từ V1 / V2 / V3 ---------- */
+  var IRR = {};
+  ("awake:awoke:awoken;be:was / were:been;bear:bore:borne;beat:beat:beaten;become:became:become;begin:began:begun;bend:bent:bent;bet:bet:bet;bite:bit:bitten;bleed:bled:bled;blow:blew:blown;break:broke:broken;bring:brought:brought;build:built:built;burn:burned / burnt:burned / burnt;burst:burst:burst;buy:bought:bought;catch:caught:caught;choose:chose:chosen;come:came:come;cost:cost:cost;cut:cut:cut;deal:dealt:dealt;dig:dug:dug;do:did:done;draw:drew:drawn;dream:dreamed / dreamt:dreamed / dreamt;drink:drank:drunk;drive:drove:driven;eat:ate:eaten;fall:fell:fallen;feed:fed:fed;feel:felt:felt;fight:fought:fought;find:found:found;fly:flew:flown;forbid:forbade:forbidden;forget:forgot:forgotten;forgive:forgave:forgiven;freeze:froze:frozen;get:got:got / gotten;give:gave:given;go:went:gone;grow:grew:grown;hang:hung:hung;have:had:had;hear:heard:heard;hide:hid:hidden;hit:hit:hit;hold:held:held;hurt:hurt:hurt;keep:kept:kept;know:knew:known;lay:laid:laid;lead:led:led;learn:learned / learnt:learned / learnt;leave:left:left;lend:lent:lent;let:let:let;lie:lay:lain;light:lit:lit;lose:lost:lost;make:made:made;mean:meant:meant;meet:met:met;pay:paid:paid;put:put:put;quit:quit:quit;read:read:read;ride:rode:ridden;ring:rang:rung;rise:rose:risen;run:ran:run;say:said:said;see:saw:seen;seek:sought:sought;sell:sold:sold;send:sent:sent;set:set:set;shake:shook:shaken;shine:shone:shone;shoot:shot:shot;show:showed:shown;shut:shut:shut;sing:sang:sung;sink:sank:sunk;sit:sat:sat;sleep:slept:slept;slide:slid:slid;speak:spoke:spoken;spell:spelled / spelt:spelled / spelt;spend:spent:spent;spill:spilled / spilt:spilled / spilt;spread:spread:spread;stand:stood:stood;steal:stole:stolen;stick:stuck:stuck;sting:stung:stung;strike:struck:struck;swear:swore:sworn;sweep:swept:swept;swim:swam:swum;swing:swung:swung;take:took:taken;teach:taught:taught;tear:tore:torn;tell:told:told;think:thought:thought;throw:threw:thrown;understand:understood:understood;wake:woke:woken;wear:wore:worn;weep:wept:wept;win:won:won;wind:wound:wound;write:wrote:written;" +
+    "overcome:overcame:overcome;overtake:overtook:overtaken;oversleep:overslept:overslept;overhear:overheard:overheard;overdo:overdid:overdone;undertake:undertook:undertaken;undergo:underwent:undergone;undo:undid:undone;withdraw:withdrew:withdrawn;withhold:withheld:withheld;withstand:withstood:withstood;mistake:mistook:mistaken;mislead:misled:misled;misunderstand:misunderstood:misunderstood;rebuild:rebuilt:rebuilt;rewrite:rewrote:rewritten;retell:retold:retold;rethink:rethought:rethought;redo:redid:redone;remake:remade:remade;reread:reread:reread;rerun:reran:rerun;reset:reset:reset;retake:retook:retaken;outgrow:outgrew:outgrown;outdo:outdid:outdone;outrun:outran:outrun;upset:upset:upset;uphold:upheld:upheld;foresee:foresaw:foreseen;forecast:forecast:forecast;fit:fitted / fit:fitted / fit;broadcast:broadcast:broadcast;offset:offset:offset;input:input:input;shed:shed:shed;split:split:split;thrust:thrust:thrust;lean:leaned / leant:leaned / leant;leap:leaped / leapt:leaped / leapt;kneel:knelt:knelt;bind:bound:bound;breed:bred:bred;cast:cast:cast;creep:crept:crept;flee:fled:fled;fling:flung:flung;grind:ground:ground;mow:mowed:mown;prove:proved:proven;saw:sawed:sawn;sew:sewed:sewn;shrink:shrank:shrunk;sow:sowed:sown;spin:spun:spun;spit:spat:spat;stink:stank:stunk;strive:strove:striven;swell:swelled:swollen;wring:wrung:wrung").split(";").forEach(function (r) {
+    var a = r.split(":"); if (a.length === 3) IRR[a[0]] = [a[1], a[2]];
+  });
+  var DBL = { admit: 1, commit: 1, control: 1, occur: 1, prefer: 1, refer: 1, regret: 1, permit: 1, submit: 1, transfer: 1, equip: 1, omit: 1, expel: 1, rebel: 1, patrol: 1, compel: 1, forbid: 1 };
+  var OV = { backup: "backed up", travel: "traveled / travelled", cancel: "canceled / cancelled", model: "modeled / modelled" };
+  function regEd(v) {
+    if (OV[v]) return OV[v];
+    if (/[^aeiou]y$/.test(v)) return v.slice(0, -1) + "ied";
+    if (/e$/.test(v)) return v + "d";
+    if (/c$/.test(v)) return v + "ked";
+    var syl = (v.match(/[aeiouy]+/g) || []).length;
+    if (/[^aeiou][aeiou][^aeiouwxy]$/.test(v) && (syl === 1 || DBL[v])) return v + v.slice(-1) + "ed";
+    return v + "ed";
+  }
+  function verbForms(w) {
+    if (!w || w.pos !== "động từ" || /\s/.test(w.w)) return null;
+    var v = w.w.toLowerCase();
+    if (IRR[v]) { var f = IRR[v]; return { v1: v, v2: f[0], v3: f[1], irr: true }; }
+    var e = regEd(v); return { v1: v, v2: e, v3: e, irr: false };
+  }
+  function irrLookup(q) {
+    var out = [];
+    Object.keys(IRR).forEach(function (k) { var f = IRR[k]; if (f[0].split(" / ").indexOf(q) >= 0 || f[1].split(" / ").indexOf(q) >= 0) out.push(k); });
+    return out;
+  }
+  function formsHtml(w) {
+    var f = verbForms(w); if (!f) return "";
+    return '<div class="vf"><span><i>V1</i>' + esc(f.v1) + "</span><span><i>V2</i>" + esc(f.v2) + "</span><span><i>V3</i>" + esc(f.v3) + '</span><em class="' + (f.irr ? "irr" : "reg") + '">' + (f.irr ? "Bất quy tắc" : "Có quy tắc (thêm -ed)") + "</em></div>";
+  }
   function noteSearch(q) {
     q = plain(q); if (!q) return [];
     var hits = [];
@@ -962,6 +997,8 @@
       if (a === q) sc = 3; else if (a.indexOf(q) === 0) sc = 2; else if (a.indexOf(q) >= 0 || b.indexOf(q) >= 0) sc = 1;
       if (sc) hits.push([sc, id]);
     });
+    var inf = irrLookup(q);
+    if (inf.length) Object.keys(W).forEach(function (id) { var w = W[id]; if (w.pos === "động từ" && inf.indexOf(w.w.toLowerCase()) >= 0 && !hits.some(function (h) { return h[1] === id; })) hits.push([2, id]); });
     return hits.sort(function (x, y) { return y[0] - x[0]; }).slice(0, 6).map(function (x) { return x[1]; });
   }
   function initNotebook() {
@@ -980,8 +1017,15 @@
       var ids = noteSearch(e.target.value), box = $("#noteRes");
       box.innerHTML = !e.target.value.trim() ? "" : ids.length ? ids.map(function (id) {
         var w = W[id];
-        return '<div class="nres"><div><b>' + esc(w.w) + "</b> <span class=\"muted\">" + esc(w.ipa) + " · " + esc(w.pos) + (w.cefr ? " · " + w.cefr : "") + "</span><div>" + esc(w.vi) + '</div><div class="muted" style="font-size:13px">' + esc(w.ex) + '</div></div><div class="nbtn"><button class="btn small ghost" data-nsp="' + esc(id) + '" type="button">Nghe</button><button class="btn small ghost" data-nad="' + esc(id) + '" type="button">+ Ôn tập</button></div></div>';
-      }).join("") : '<p class="muted" style="margin-top:8px">Không có trong kho từ của app.</p>';
+        return '<div class="nres"><div><b>' + esc(w.w) + "</b> <span class=\"muted\">" + esc(w.ipa) + " · " + esc(w.pos) + (w.cefr ? " · " + w.cefr : "") + "</span><div>" + esc(w.vi) + "</div>" + formsHtml(w) + '<div class="muted" style="font-size:13px">' + esc(w.ex) + '</div></div><div class="nbtn"><button class="btn small ghost" data-nsp="' + esc(id) + '" type="button">Nghe</button><button class="btn small ghost" data-nad="' + esc(id) + '" type="button">+ Ôn tập</button></div></div>';
+      }).join("") : "";
+      var qq = plain(e.target.value), shown = {};
+      ids.forEach(function (id) { shown[W[id].w.toLowerCase()] = 1; });
+      var bases = irrLookup(qq); if (IRR[qq] && bases.indexOf(qq) < 0) bases.push(qq);
+      var extra = bases.filter(function (k) { return !shown[k]; }).slice(0, 3).map(function (k) {
+        return '<div class="nres"><div><b>' + esc(k) + '</b> <span class="muted">động từ bất quy tắc</span>' + formsHtml({ w: k, pos: "động từ" }) + "</div></div>";
+      }).join("");
+      if (e.target.value.trim()) { box.innerHTML += extra; if (!ids.length && !extra) box.innerHTML = '<p class="muted" style="margin-top:8px">Không có trong kho từ của app.</p>'; }
     });
     $("#noteRes").addEventListener("click", function (e) {
       var s = e.target.closest ? e.target.closest("[data-nsp]") : null, a = e.target.closest ? e.target.closest("[data-nad]") : null;

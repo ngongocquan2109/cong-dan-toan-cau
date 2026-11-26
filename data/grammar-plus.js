@@ -24,7 +24,7 @@
         x("Do you are tired?", "Are you tired?", "To be tự làm trợ động từ, nên không thêm do hay does."),
         x("I have 12 years old.", "I am 12 years old.", "Tiếng Anh dùng to be để nói tuổi, không dùng have.")
       ],
-      check: ["Chủ ngữ là ngôi nào, số ít hay số nhiều?", "Đã chọn am, is hoặc are khớp với chủ ngữ?", "Câu phủ định có not đứng ngay sau to be?", "Câu hỏi đã đảo to be lên đầu và không có do hoặc does?"],
+      check: ["Chủ ngữ của câu là ai? || Tìm từ đứng trước chỗ trống. I → am. He, she, it (hoặc một người, một vật) → is. You, we, they (hoặc nhiều người) → are.", "Em đã chọn đúng am, is, are chưa? || Đọc lại cả câu. Ví dụ: My brother ___ tall. My brother thay được bằng he nên chọn is.", "Nếu là câu phủ định, not nằm ngay sau to be chưa? || Phủ định chỉ cần thêm not sau am, is, are. Ví dụ: She is not tired. Không thêm do hay does.", "Nếu là câu hỏi, em đã đưa am, is, are lên đầu câu chưa? || Đổi chỗ to be và chủ ngữ: She is ready → Is she ready? Không cần do hay does."],
       more: [
         mc("q15", "m", "Tom and Ben ___ brothers.", ["are", "is", "am"], "are", "Hai người (Tom and Ben) là số nhiều nên dùng are.", "chia-to-be"),
         fl("q16", "m", "My parents ___ at work now.", "are", "Parents là số nhiều nên dùng are.", "chia-to-be"),
@@ -49,7 +49,7 @@
         x("She doesn't likes tea.", "She doesn't like tea.", "Sau doesn't là động từ nguyên mẫu, không thêm -s."),
         x("Does she works here?", "Does she work here?", "Does đã mang -s nên động từ chính giữ nguyên.")
       ],
-      check: ["Chủ ngữ là he, she, it chưa? Nếu có, động từ đã thêm -s hoặc -es chưa?", "Phủ định có don't hoặc doesn't + động từ nguyên mẫu?", "Câu hỏi có Do hoặc Does đứng đầu và động từ không có -s?", "Trạng từ tần suất đứng trước động từ thường và sau to be?"],
+      check: ["Chủ ngữ có phải he, she, it (hoặc một người, một vật) không? || Nếu có, động từ thêm -s hoặc -es: She works. He watches. Với I, you, we, they thì giữ nguyên: I work.", "Câu phủ định đã dùng don't hoặc doesn't chưa? || Dùng don't với I, you, we, they; doesn't với he, she, it. Sau don't hoặc doesn't, động từ về nguyên mẫu: She doesn't work.", "Câu hỏi đã bắt đầu bằng Do hoặc Does chưa? || Do với I, you, we, they; Does với he, she, it. Động từ chính sau đó không có -s: Does she work?", "Trạng từ tần suất (always, usually, never) đã đặt đúng chỗ chưa? || Đứng trước động từ thường: I always eat. Đứng sau to be: She is always late."],
       more: [
         mc("q16", "m", "My mother ___ dinner every evening.", ["cooks", "cook", "cooking"], "cooks", "My mother là she nên động từ thêm -s.", "them-s-es"),
         fl("q17", "m", "The baby ___ (cry) a lot.", "cries", "Động từ tận cùng phụ âm + y đổi y thành i rồi thêm -es: cries.", "them-s-es"),
@@ -74,7 +74,7 @@
         x("She is sit on the sofa.", "She is sitting on the sofa.", "Sau to be cần V-ing, và sit gấp đôi phụ âm: sitting."),
         x("I am knowing the answer.", "I know the answer.", "Know là động từ trạng thái, thường không dùng ở thì tiếp diễn.")
       ],
-      check: ["To be (am, is, are) đã khớp với chủ ngữ?", "Động từ đã thêm -ing đúng chính tả (make → making, run → running)?", "Phủ định có not đứng sau to be?", "Có động từ trạng thái (know, like, want) đang bị chia tiếp diễn không?"],
+      check: ["Việc này đang xảy ra ngay lúc nói chưa? || Có now, at the moment, look!, listen! thì dùng hiện tại tiếp diễn: I am reading now.", "Em đã chọn am, is, are đúng chủ ngữ chưa? || Công thức: am / is / are + động từ-ing. Ví dụ: They are playing.", "Động từ -ing viết đúng chính tả chưa? || Bỏ e rồi thêm ing: make → making. Gấp đôi phụ âm cuối với từ ngắn: run → running, sit → sitting.", "Có động từ chỉ trạng thái (know, like, want, love) không? || Các từ này thường không dùng -ing. Nói I know the answer, không nói I am knowing."],
       more: [
         mc("q15", "m", "Look! The children ___ in the garden.", ["are playing", "play", "is playing"], "are playing", "Look! cho thấy đang diễn ra; children là số nhiều nên dùng are playing.", "cau-truc-tiep-dien"),
         fl("q16", "m", "She is ___ (swim) in the pool.", "swimming", "Swim gấp đôi phụ âm cuối rồi thêm -ing: swimming.", "them-ing"),
@@ -99,7 +99,7 @@
         x("Did you went there?", "Did you go there?", "Sau Did động từ về nguyên mẫu."),
         x("She goed home.", "She went home.", "Go là động từ bất quy tắc: go – went – gone.")
       ],
-      check: ["Có mốc quá khứ (yesterday, last week, ago, in 2019) không?", "Động từ có quy tắc đã thêm -ed đúng chính tả?", "Động từ bất quy tắc đã dùng đúng V2?", "Sau did hoặc didn't, động từ đã về nguyên mẫu chưa?"],
+      check: ["Câu có mốc thời gian đã qua không? || Các dấu hiệu: yesterday, last week, two days ago, in 2019. Có chúng thì dùng quá khứ đơn.", "Động từ có quy tắc đã thêm -ed chưa? || Thêm ed: work → worked. Từ kết thúc bằng e chỉ thêm d: like → liked. Phụ âm + y đổi thành ied: study → studied.", "Động từ bất quy tắc đã dùng đúng dạng quá khứ chưa? || Các từ này không thêm ed mà đổi hẳn: go → went, eat → ate, see → saw. Cần học thuộc.", "Sau did hoặc didn't, động từ đã về nguyên mẫu chưa? || Did đã mang nghĩa quá khứ rồi, nên động từ giữ nguyên: Did you go? (không nói Did you went)."],
       more: [
         mc("q17", "m", "She ___ the door and went in.", ["opened", "open", "opens"], "opened", "Hành động đã xong trong quá khứ: open + -ed.", "dong-tu-co-quy-tac"),
         fl("q18", "m", "They ___ (play) tennis last Sunday.", "played", "Play + -ed = played (y sau nguyên âm giữ nguyên).", "chinh-ta-ed"),
@@ -124,7 +124,7 @@
         x("I will to call you.", "I will call you.", "Sau will không có to."),
         x("He going to work tomorrow.", "He is going to work tomorrow.", "Be going to cần am, is hoặc are.")
       ],
-      check: ["Sau will là động từ nguyên mẫu, không -s, không to?", "Với be going to, am, is, are đã khớp chủ ngữ?", "Đây là lời hứa hoặc quyết định tức thì (will) hay kế hoạch, dấu hiệu rõ ràng (going to)?", "Phủ định đúng: won't hoặc am / is / are not going to?"],
+      check: ["Sau will, động từ có ở nguyên mẫu không? || Will + động từ nguyên mẫu, không to, không -s: She will come. (không nói She will comes)", "Với be going to, đã chọn am, is, are đúng chủ ngữ chưa? || Công thức: am / is / are going to + động từ. Ví dụ: He is going to travel.", "Đây là quyết định tức thì hay kế hoạch đã có sẵn? || Quyết định ngay lúc nói, lời hứa, dự đoán: dùng will. Kế hoạch đã định hoặc có dấu hiệu rõ ràng: dùng be going to.", "Phủ định đã viết đúng chưa? || Will not = won't: I won't go. Be going to thì thêm not sau to be: She isn't going to come."],
       more: [
         mc("q15", "m", "I think it ___ be sunny tomorrow.", ["will", "am", "goes"], "will", "Dự đoán dùng will + động từ nguyên mẫu.", "cau-truc-will"),
         fl("q16", "m", "She will ___ (be) 18 next year.", "be", "Sau will là nguyên mẫu be.", "sau-will"),
@@ -149,7 +149,7 @@
         x("They was playing.", "They were playing.", "They đi với were, không dùng was."),
         x("While I was walking, I see a dog.", "While I was walking, I saw a dog.", "Hành động ngắn xen vào dùng quá khứ đơn: saw.")
       ],
-      check: ["Was hoặc were đã khớp chủ ngữ?", "Động từ chính đã có -ing?", "Có mốc thời gian cụ thể hoặc hành động bị cắt ngang không?", "When đi với hành động ngắn (quá khứ đơn), while đi với hành động dài (quá khứ tiếp diễn)?"],
+      check: ["Em đã chọn was hoặc were đúng chủ ngữ chưa? || I, he, she, it → was. You, we, they → were.", "Động từ chính đã thêm -ing chưa? || Công thức: was / were + động từ-ing. Ví dụ: I was cooking.", "Có một thời điểm cụ thể hoặc một việc khác xen vào không? || Dùng cho việc đang diễn ra tại một lúc trong quá khứ: At 8 pm I was studying. Hoặc việc dài bị việc ngắn cắt ngang.", "When và while dùng đúng chưa? || While + việc kéo dài (quá khứ tiếp diễn). When + việc ngắn xen vào (quá khứ đơn). Ví dụ: I was sleeping when the phone rang."],
       more: [
         mc("q13", "m", "At 7 p.m. yesterday, she ___ dinner. (đang nấu)", ["was cooking", "cooked", "is cooking"], "was cooking", "Mốc 7 p.m. yesterday cho thấy hành động đang diễn ra trong quá khứ.", "qk-tiep-dien-cau-truc"),
         fl("q14", "m", "We were ___ (watch) a film at nine.", "watching", "Sau were cần V-ing: watching.", "qk-tiep-dien-cau-truc"),
@@ -174,7 +174,7 @@
         x("He can to drive.", "He can drive.", "Sau can không có to."),
         x("Does she can swim?", "Can she swim?", "Can tự đảo lên đầu câu hỏi, không dùng do hay does.")
       ],
-      check: ["Sau động từ khuyết thiếu là nguyên mẫu, không to, không -s?", "Phủ định đã đúng (can't, mustn't, shouldn't)?", "Câu hỏi đã đảo động từ khuyết thiếu lên trước chủ ngữ?", "Đã phân biệt mustn't (cấm) và don't have to (không cần)?"],
+      check: ["Sau can, must, should... động từ có ở nguyên mẫu không? || Không thêm to, không thêm -s: She can swim. (không nói She can swims hay She can to swim)", "Câu phủ định đã dùng đúng dạng rút gọn chưa? || can't (không thể), mustn't (cấm), shouldn't (không nên). Không dùng do hoặc does.", "Câu hỏi đã đưa động từ khuyết thiếu lên đầu chưa? || Đưa can, should, must lên trước chủ ngữ: Can you help me? Không cần do.", "Em đã phân biệt mustn't và don't have to chưa? || mustn't = cấm, không được làm. don't have to = không bắt buộc, làm cũng được, không làm cũng được."],
       more: [
         mc("q13", "m", "___ you help me with this bag, please?", ["Could", "Do", "Are"], "Could", "Could you... là cách nhờ giúp lịch sự.", "modal-can"),
         fl("q14", "m", "He can ___ (play) the piano.", "play", "Sau can là nguyên mẫu play.", "modal-cau-truc"),
@@ -199,7 +199,7 @@
         x("What does she wants?", "What does she want?", "Sau does động từ giữ nguyên."),
         x("Who does live here?", "Who lives here?", "Khi Who hỏi về chủ ngữ thì không dùng do hay does.")
       ],
-      check: ["Từ để hỏi đã hợp nghĩa (what, where, who, when, why, how)?", "Trợ động từ đã đúng (do, does, did hoặc to be)?", "Sau do hoặc does, động từ có là nguyên mẫu?", "Khi who hoặc what là chủ ngữ, đã bỏ do hoặc does?"],
+      check: ["Từ để hỏi có hợp với điều muốn biết không? || What (cái gì), where (ở đâu), who (ai), when (khi nào), why (tại sao), how (như thế nào).", "Em đã chọn đúng trợ động từ chưa? || Hiện tại: do / does. Quá khứ: did. Với to be thì dùng am, is, are, was, were.", "Sau do, does, did, động từ có ở nguyên mẫu không? || Ví dụ: Where does she live? (không nói Where does she lives)", "Nếu who hoặc what làm chủ ngữ, em đã bỏ do, does chưa? || Who lives here? (ai sống ở đây) không cần does. Nhưng Who does she meet? (cô ấy gặp ai) vẫn cần does."],
       more: [
         mc("q13", "m", "___ is your birthday? — It's on 5 May.", ["When", "Where", "Who"], "When", "Hỏi thời gian dùng When.", "wh-tu-hoi"),
         mc("q14", "m", "___ does she go to work? — By bus.", ["How", "Why", "Who"], "How", "Hỏi cách thức, phương tiện dùng How.", "wh-tu-hoi"),
@@ -224,7 +224,7 @@
         x("an information", "some information", "Information không đếm được nên không dùng an và không thêm -s."),
         x("much books", "many books", "Books đếm được nên dùng many.")
       ],
-      check: ["Danh từ đếm được hay không đếm được?", "Số nhiều đã đúng dạng (-s, -es, -ies, bất quy tắc)?", "Dùng many cho đếm được, much cho không đếm được?", "A hoặc an chỉ đi với danh từ đếm được số ít?"],
+      check: ["Danh từ này đếm được hay không đếm được? || Đếm được: book, apple (đếm 1, 2, 3 được). Không đếm được: water, rice, money, advice (không đếm trực tiếp).", "Số nhiều đã viết đúng chưa? || Thường thêm s: cat → cats. Tận cùng s, sh, ch, x thì thêm es: box → boxes. Phụ âm + y thì ies: baby → babies. Có từ bất quy tắc: man → men.", "Em dùng many hay much đúng chưa? || many + danh từ đếm được (many books). much + danh từ không đếm được (much water).", "A hoặc an có đứng trước danh từ số ít đếm được không? || a book, an apple. Không dùng a, an trước danh từ số nhiều hoặc không đếm được."],
       more: [
         mc("q13", "m", "Two ___ are crossing the road.", ["women", "womans", "womens"], "women", "Woman có số nhiều bất quy tắc: women.", "danh-tu-so-nhieu"),
         fl("q14", "m", "I have three ___ (watch).", "watches", "Danh từ tận cùng -ch thêm -es: watches.", "danh-tu-so-nhieu"),
@@ -249,7 +249,7 @@
         x("a apple", "an apple", "Dùng an trước âm nguyên âm."),
         x("The life is beautiful.", "Life is beautiful.", "Nói chung về một khái niệm thì không dùng the.")
       ],
-      check: ["Danh từ số ít đếm được đã có a hoặc an?", "A hay an chọn theo âm đầu, không theo chữ cái?", "Người nghe đã biết đối tượng nào chưa (dùng the)?", "Nói chung chung, danh từ số nhiều hoặc không đếm được thì không cần mạo từ?"],
+      check: ["Danh từ số ít đếm được đã có a, an hoặc the chưa? || Không nói I have book. Phải nói I have a book.", "Chọn a hay an theo âm đọc, không theo chữ cái. || an hour (h không đọc), a university (đọc /ju/ như phụ âm). Nghe âm đầu: nguyên âm → an, phụ âm → a.", "Người nghe đã biết đối tượng nào chưa? || Chưa biết, nhắc lần đầu: a. Đã biết hoặc đã nhắc rồi: the. Ví dụ: I saw a dog. The dog was big.", "Nói chung chung thì có cần mạo từ không? || Số nhiều hoặc không đếm được nói chung thì bỏ mạo từ: I like music. Dogs are friendly."],
       more: [
         mc("q13", "m", "He is ___ honest man. (một người)", ["an", "a", "the"], "an", "Honest bắt đầu bằng âm nguyên âm /ɒ/ vì h câm nên dùng an.", "a-an"),
         mc("q14", "m", "I need ___ umbrella. (một cái)", ["an", "a", "the"], "an", "Umbrella bắt đầu bằng âm nguyên âm nên dùng an.", "a-an"),
@@ -274,7 +274,7 @@
         x("This is mine book.", "This is my book.", "Trước danh từ dùng my, không dùng mine."),
         x("He's name is Tom.", "His name is Tom.", "Sở hữu của he là his, không phải he's.")
       ],
-      check: ["Đây là chủ ngữ (I, he) hay tân ngữ (me, him)?", "Trước danh từ dùng my, her...; đứng một mình dùng mine, hers...?", "This, these chỉ gần; that, those chỉ xa; số ít hay số nhiều đã khớp?", "Sở hữu của người cụ thể có dùng 's (Tom's) chưa?"],
+      check: ["Từ cần điền là chủ ngữ hay tân ngữ? || Làm chủ ngữ (đứng trước động từ): I, he, she, we, they. Làm tân ngữ (đứng sau động từ): me, him, her, us, them.", "Đứng trước danh từ hay đứng một mình? || Trước danh từ: my, your, his, her, our, their (my book). Đứng một mình: mine, yours, his, hers, ours, theirs (The book is mine).", "Vật ở gần hay xa, một hay nhiều? || Gần: this (một), these (nhiều). Xa: that (một), those (nhiều).", "Sở hữu của một người cụ thể đã thêm 's chưa? || Tom's book (sách của Tom). Không dùng dấu 's cho vật vô tri trong câu đơn giản."],
       more: [
         mc("q13", "m", "___ is my friend. He lives next door.", ["He", "Him", "His"], "He", "Làm chủ ngữ của câu thì dùng he.", "dai-tu-nhan-xung"),
         mc("q14", "m", "Can you help ___? (tôi)", ["me", "I", "my"], "me", "Tân ngữ sau động từ help là me.", "dai-tu-nhan-xung"),
@@ -299,7 +299,7 @@
         x("He sings good.", "He sings well.", "Trạng từ của good là well."),
         x("a house big", "a big house", "Tính từ đứng trước danh từ.")
       ],
-      check: ["Từ cần bổ nghĩa là danh từ (tính từ) hay động từ (trạng từ)?", "Tính từ đứng trước danh từ hoặc sau to be?", "Trạng từ cách thức đã thêm -ly chưa?", "Có từ đặc biệt (hard, fast, late, well) không thêm -ly?"],
+      check: ["Từ cần bổ nghĩa là danh từ hay động từ? || Bổ nghĩa cho danh từ: dùng tính từ (a quick car). Bổ nghĩa cho động từ: dùng trạng từ (He drives quickly).", "Tính từ đã đứng đúng chỗ chưa? || Đứng trước danh từ (a big house) hoặc sau to be (The house is big).", "Trạng từ chỉ cách thức đã thêm -ly chưa? || Thường lấy tính từ + ly: slow → slowly, careful → carefully. Phụ âm + y → ily: happy → happily.", "Có phải từ đặc biệt không thêm -ly không? || fast, hard, late, early giữ nguyên khi là trạng từ. Riêng good → well (She sings well)."],
       more: [
         mc("q13", "m", "The soup is ___.", ["hot", "hotly", "heat"], "hot", "Sau to be dùng tính từ hot.", "tinh-tu"),
         fl("q14", "m", "He is a quick runner. He runs ___. (quick)", "quickly", "Bổ nghĩa cho động từ runs cần trạng từ quickly.", "trang-tu-cach-thuc"),
@@ -324,7 +324,7 @@
         x("the most tallest", "the tallest", "Tính từ ngắn đã có -est thì không thêm most."),
         x("She is more good.", "She is better.", "Good là tính từ bất quy tắc: good – better – best.")
       ],
-      check: ["Tính từ ngắn hay tính từ dài?", "Chính tả đã đúng (big → bigger, happy → happier)?", "So sánh hơn có than, so sánh nhất có the?", "Có tính từ bất quy tắc (good, bad) không?"],
+      check: ["Tính từ này ngắn hay dài? || Ngắn (1 âm tiết): thêm -er, -est (taller, tallest). Dài (từ 2 âm tiết trở lên): dùng more, most (more beautiful).", "Chính tả đã đúng chưa? || Gấp đôi phụ âm: big → bigger. Phụ âm + y → ier: happy → happier. Tận cùng e chỉ thêm r: nice → nicer.", "So sánh hơn hay nhất? || So sánh hơn (giữa hai) có than: taller than. So sánh nhất (cao nhất trong nhóm) có the: the tallest.", "Có phải tính từ bất quy tắc không? || good → better → the best. bad → worse → the worst. Cần học thuộc."],
       more: [
         mc("q13", "m", "Mai is ___ than Lan. (young)", ["younger", "more young", "youngest"], "younger", "Young là tính từ ngắn nên thêm -er.", "so-sanh-hon"),
         fl("q14", "m", "This is the ___ (big) house in the street.", "biggest", "Big gấp đôi phụ âm cuối rồi thêm -est: biggest.", "chinh-ta-so-sanh"),
@@ -349,7 +349,7 @@
         x("at the morning", "in the morning", "Buổi trong ngày dùng in the morning."),
         x("arrive to Hanoi", "arrive in Hanoi", "Arrive đi với in hoặc at, không đi với to.")
       ],
-      check: ["Thời gian: at (giờ), on (ngày), in (tháng, năm, mùa, buổi)?", "Nơi chốn: at (điểm), in (trong không gian), on (trên bề mặt)?", "Phương tiện đã dùng by (by bus) chưa?", "Có phải cụm cố định (at night, at home, on time)?"],
+      check: ["Giới từ chỉ thời gian: at, on hay in? || at + giờ (at 5 pm). on + ngày (on Monday). in + tháng, năm, mùa, buổi (in May, in 2020, in the morning).", "Giới từ chỉ nơi chốn: at, in hay on? || at + một điểm (at the bus stop). in + bên trong không gian (in the room). on + trên bề mặt (on the table).", "Phương tiện đã dùng by chưa? || by bus, by car, by train, by plane. Đi bộ thì on foot.", "Có phải cụm cố định không? || Có những cụm phải nhớ nguyên: at night, at home, on time (đúng giờ), in time (kịp giờ)."],
       more: [
         mc("q13", "m", "We have dinner ___ 7 p.m.", ["at", "on", "in"], "at", "Giờ chính xác dùng at.", "gioi-tu-thoi-gian"),
         mc("q14", "m", "My birthday is ___ March.", ["in", "on", "at"], "in", "Tháng dùng in.", "gioi-tu-thoi-gian"),
@@ -374,7 +374,7 @@
         x("It has a book on the table.", "There is a book on the table.", "Muốn nói có cái gì ở đâu thì dùng There is."),
         x("She have got a bike.", "She has got a bike.", "She đi với has got.")
       ],
-      check: ["Danh từ phía sau số ít (is) hay số nhiều (are)?", "Danh từ không đếm được thì dùng is?", "Phủ định dùng isn't hoặc aren't (any)?", "Have hoặc has got đã khớp chủ ngữ?"],
+      check: ["Danh từ đứng sau là số ít hay số nhiều? || There is + số ít (There is a cat). There are + số nhiều (There are two cats).", "Danh từ không đếm được dùng is hay are? || Không đếm được luôn dùng is: There is some water. (không nói There are some water)", "Câu phủ định đã dùng any chưa? || There isn't any milk. There aren't any eggs. Dùng any trong câu phủ định và câu hỏi.", "Nếu dùng have got, đã chọn have hay has đúng chủ ngữ chưa? || He, she, it → has got. I, you, we, they → have got. Ví dụ: She has got a car."],
       more: [
         mc("q13", "m", "There ___ an apple on the table.", ["is", "are", "have"], "is", "An apple là số ít nên dùng is.", "there-is-are"),
         mc("q14", "m", "There ___ any eggs in the fridge.", ["aren't", "isn't", "don't"], "aren't", "Eggs là số nhiều nên phủ định là aren't.", "there-phu-dinh-cau-hoi"),
@@ -399,7 +399,7 @@
         x("If I will see him, I tell him.", "If I see him, I will tell him.", "Vế if dùng hiện tại đơn, vế kết quả dùng will."),
         x("Unless you don't hurry, you will be late.", "Unless you hurry, you will be late.", "Unless đã mang nghĩa phủ định nên không thêm don't.")
       ],
-      check: ["Vế if đã dùng hiện tại đơn, không dùng will?", "Vế kết quả đã dùng will + nguyên mẫu?", "Unless đã mang nghĩa nếu không, không thêm don't?", "Đây là sự thật hiển nhiên (loại 0) hay khả năng ở tương lai (loại 1)?"],
+      check: ["Mệnh đề if có dùng hiện tại đơn không? || Sau if, dù nói về tương lai vẫn dùng hiện tại đơn: If it rains... (không nói If it will rain)", "Mệnh đề kết quả có dùng will + nguyên mẫu không? || Ví dụ: If it rains, we will stay at home.", "Unless đã dùng đúng nghĩa chưa? || Unless = if ... not (nếu không). Unless you hurry, you will be late. Không thêm not hoặc don't sau unless.", "Đây là sự thật hiển nhiên hay khả năng ở tương lai? || Sự thật luôn đúng: If + hiện tại, hiện tại (If you heat ice, it melts). Khả năng sắp tới: If + hiện tại, will + động từ."],
       more: [
         mc("q13", "m", "If you mix blue and yellow, you ___ green.", ["get", "will got", "getting"], "get", "Sự thật hiển nhiên dùng hiện tại đơn ở cả hai vế.", "dk-loai-0"),
         fl("q14", "m", "If she ___ (come), we will start the meeting.", "comes", "Vế if dùng hiện tại đơn; she thêm -s.", "dk-loai-1"),
@@ -424,7 +424,7 @@
         x("The house built in 1990.", "The house was built in 1990.", "Không được bỏ was."),
         x("It was wrote by Anna.", "It was written by Anna.", "V3 của write là written, không phải wrote.")
       ],
-      check: ["Có be (am, is, are, was, were) đúng thì?", "Động từ chính ở dạng V3?", "Có cần by + người làm không (thường bỏ nếu không quan trọng)?", "Phủ định có not, câu hỏi đã đảo be lên đầu?"],
+      check: ["Em đã chọn đúng dạng của be theo thì chưa? || Hiện tại: am, is, are. Quá khứ: was, were. Tương lai: will be. Ví dụ: The room is cleaned every day.", "Động từ chính đã ở dạng V3 chưa? || Công thức: be + V3 (quá khứ phân từ). Ví dụ: The window was broken. Động từ bất quy tắc: write → written.", "Có cần nói ai làm không? || Muốn nhắc người làm thì thêm by: The book was written by Tom. Nếu không quan trọng thì bỏ by.", "Câu hỏi hoặc phủ định đã đúng chưa? || Phủ định: thêm not sau be (It was not made here). Câu hỏi: đưa be lên đầu (Was it made here?)."],
       more: [
         mc("q13", "m", "Cars ___ in this factory.", ["are made", "make", "is made"], "are made", "Cars là số nhiều, hiện tại đơn bị động: are + V3.", "bi-dong-cau-truc"),
         fl("q14", "m", "The film was ___ (see) by millions of people.", "seen", "V3 của see là seen.", "phan-tu-qua-khu"),

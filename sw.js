@@ -1,5 +1,5 @@
 /* Service worker: lưu file app để dùng được khi mất mạng. */
-const CACHE = "nrcdtc-v19";
+const CACHE = "nrcdtc-v20";
 const FILES = [
   "./", "index.html", "styles.css", "app.js", "manifest.webmanifest", "icon.svg",
   "icons/avatar-160.png", "icons/favicon-32.png", "icons/icon-192.png", "icons/icon-512.png", "icons/icon-maskable-512.png", "icons/apple-touch-icon.png",
@@ -21,6 +21,7 @@ const FILES = [
   "data/grammar-conditionals.js",
   "data/grammar-passive.js",
   "data/grammar-plus.js",
+  "data/grammar-explain.js",
   "data/vocab-helper.js",
   "data/vocab-food.js",
   "data/vocab-family.js",
@@ -32,6 +33,16 @@ const FILES = [
   "data/vocab-shopping.js",
   "data/vocab-weather.js",
   "data/vocab-time.js",
+  "data/vocab-verbs.js",
+  "data/vocab-feelings.js",
+  "data/vocab-tech.js",
+  "data/vocab-money.js",
+  "data/vocab-nature.js",
+  "data/vocab-leisure.js",
+  "data/vocab-clothes.js",
+  "data/vocab-city.js",
+  "data/vocab-communication.js",
+  "data/vocab-business.js",
   "data/vocab-cefr.js"
 ];
 
