@@ -399,3 +399,4 @@ body.zen main { padding-bottom: 80px; }
 .bookrow .bu { font-weight: 700; color: var(--muted); }
 .bookrow .bg { grid-column: 2; color: var(--muted); font-size: 13px; }
 .bookrow .pill { grid-row: 1 / span 2; grid-column: 3; }
+.syncerr { margin: 8px 0; padding: 8px 12px; border-radius: 12px; background: rgba(220, 80, 80, .14); color: #e07a7a; font-size: 14px; }

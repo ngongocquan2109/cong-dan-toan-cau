@@ -1,7 +1,7 @@
 /* Service worker: lưu file app để dùng được khi mất mạng. */
-const CACHE = "nrcdtc-v22";
+const CACHE = "nrcdtc-v23";
 const FILES = [
-  "./", "index.html", "styles.css", "app.js", "manifest.webmanifest", "icon.svg",
+  "./", "index.html", "styles.css", "app.js", "sync.js", "manifest.webmanifest", "icon.svg",
   "icons/avatar-160.png", "icons/favicon-32.png", "icons/icon-192.png", "icons/icon-512.png", "icons/icon-maskable-512.png", "icons/apple-touch-icon.png",
   "data/grammar-to-be.js",
   "data/grammar-present-simple.js",
@@ -55,6 +55,7 @@ const FILES = [
   "data/vocab-communication.js",
   "data/vocab-business.js",
   "data/phrases.js",
+  "data/firebase-config.js",
   "data/vocab-cefr.js"
 ];
 

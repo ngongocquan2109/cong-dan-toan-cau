@@ -4,7 +4,7 @@
   "use strict";
 
   /* ---------- Tiện ích ---------- */
-  var APP_VERSION = "v22"; // đổi cùng CACHE trong sw.js và ?v= trong index.html mỗi lần phát hành
+  var APP_VERSION = "v23"; // đổi cùng CACHE trong sw.js và ?v= trong index.html mỗi lần phát hành
   var KEY = "nrcdtc.v1";
   var INTERVALS = [0, 1, 3, 7, 14, 30]; // số ngày chờ theo "hộp" (spaced repetition)
   var $ = function (s, r) { return (r || document).querySelector(s); };
@@ -69,14 +69,18 @@
 
   /* ---------- Trạng thái lưu trữ ---------- */
   function defaults() {
-    return { version: 1, goal: 10, theme: null, voice: null, xp: 0, days: {}, srs: {}, errors: {}, topics: {}, reports: [], badges: {}, lvl: {}, deck: {}, notes: "", selfwrite: {} };
+    return { version: 1, goal: 10, theme: null, voice: null, xp: 0, days: {}, srs: {}, errors: {}, topics: {}, reports: [], badges: {}, lvl: {}, deck: {}, notes: "", selfwrite: {}, resetAt: "", updatedAt: 0 };
   }
   function load() {
     try { var r = JSON.parse(localStorage.getItem(KEY)); return Object.assign(defaults(), r || {}); }
     catch (e) { return defaults(); }
   }
   var S = load();
-  function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* bỏ qua */ } }
+  function save() {
+    S.updatedAt = Date.now();
+    try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* bỏ qua */ }
+    if (window.NRSync) NRSync.touch(); // đồng bộ lên đám mây (nếu đã đăng nhập)
+  }
   function day(k) { return S.days[k] || (S.days[k] = { done: 0, correct: 0, wrong: 0, cards: 0 }); }
   function dayOf(k) { return S.days[k] || { done: 0, correct: 0, wrong: 0, cards: 0 }; }
 
@@ -1291,7 +1295,8 @@
         '<div class="field"><span>Số mục mỗi ngày</span><input class="input" id="goalIn" type="number" min="3" max="100" value="' + S.goal + '"></div></div>' +
       '<div class="card"><h2>Giao diện</h2><div class="field"><span>Chế độ</span><div class="seg"><button data-theme="light" class="' + (th === "light" ? "on" : "") + '" type="button">Sáng</button><button data-theme="dark" class="' + (th === "dark" ? "on" : "") + '" type="button">Tối</button></div></div>' +
         '<p class="muted" style="margin-top:8px">Mặc định theo cài đặt của thiết bị; khi Ngài tự chọn, app sẽ nhớ.</p></div>' +
-      '<div class="card"><h2>Sao lưu tiến độ</h2><p class="muted">Tiến độ chỉ lưu trên thiết bị này. Xuất file để chuyển sang máy khác hoặc phòng khi xóa dữ liệu trình duyệt.</p>' +
+      '<div class="card" id="syncBox"></div>' +
+      '<div class="card"><h2>Sao lưu tiến độ</h2><p class="muted">Xuất file để lưu một bản dự phòng ngoài đám mây, hoặc chuyển sang máy khác khi chưa bật đồng bộ.</p>' +
         '<div class="actions"><button class="btn" id="exp" type="button">Xuất file sao lưu</button><label class="btn ghost" style="cursor:pointer">Nhập file<input id="imp" type="file" accept="application/json" hidden></label></div></div>' +
       '<div class="card"><h2>Câu bị báo sai</h2><p class="muted">Đã ghi nhận ' + S.reports.length + ' câu. Danh sách này nằm trong file sao lưu để Đầy tớ xem lại và sửa nội dung.</p></div>' +
       '<div class="card"><h2>Xóa tiến độ</h2><p class="muted">Xóa toàn bộ tiến độ trên thiết bị này. Nên xuất file sao lưu trước.</p><div class="actions"><button class="btn ghost" id="reset" type="button">Xóa tiến độ…</button></div></div>' +
@@ -1308,7 +1313,37 @@
       .then(function () { return Promise.all(urls.map(function (u) { return fetch(u, { cache: "reload" }).catch(function () { /* bỏ qua */ }); })); })
       .then(function () { location.reload(); }, function () { location.reload(); });
   }
+  function syncBoxHtml() {
+    var Y = window.NRSync ? NRSync.state() : null;
+    if (!Y || !Y.enabled) return '<h2>Đồng bộ giữa các thiết bị</h2><p class="muted">Chưa bật. Làm theo file <b>HUONG-DAN-FIREBASE.md</b> để tạo dự án Firebase miễn phí rồi dán cấu hình vào <b>data/firebase-config.js</b>. Tiến độ vẫn lưu trên thiết bị này như bình thường.</p>';
+    var err = Y.err ? '<p class="syncerr">' + esc(Y.err) + "</p>" : "";
+    if (!Y.ready) return "<h2>Đồng bộ giữa các thiết bị</h2><p class=\"muted\">Đang kết nối…</p>" + err;
+    if (Y.user) {
+      return "<h2>Đồng bộ giữa các thiết bị</h2><p class=\"muted\">Đang đăng nhập: <b>" + esc(Y.user.email || "") + "</b>. Tiến độ tự động gộp và đồng bộ giữa mọi thiết bị dùng tài khoản này." +
+        (Y.last ? " Lần đồng bộ gần nhất: " + pad(Y.last.getHours()) + ":" + pad(Y.last.getMinutes()) + "." : "") + "</p>" + err +
+        '<div class="actions"><button class="btn" id="syNow" type="button"' + (Y.busy ? " disabled" : "") + ">" + (Y.busy ? "Đang đồng bộ…" : "Đồng bộ ngay") + '</button><button class="btn ghost" id="syOut" type="button">Đăng xuất</button></div>';
+    }
+    return '<h2>Đồng bộ giữa các thiết bị</h2><p class="muted">Đăng nhập cùng một tài khoản trên máy tính và điện thoại để tiến độ tự đồng bộ. Miễn phí, không dùng AI.</p>' +
+      '<div class="field"><span>Email</span><input class="input" id="syEmail" type="email" autocomplete="username" inputmode="email" autocapitalize="none"></div>' +
+      '<div class="field"><span>Mật khẩu</span><input class="input" id="syPass" type="password" autocomplete="current-password"></div>' + err +
+      '<div class="actions"><button class="btn" id="syIn" type="button"' + (Y.busy ? " disabled" : "") + '>Đăng nhập</button><button class="btn ghost" id="syUp" type="button"' + (Y.busy ? " disabled" : "") + '>Tạo tài khoản</button><button class="link" id="syForgot" type="button">Quên mật khẩu</button></div>';
+  }
+  function bindSyncBox() {
+    var box = $("#syncBox"); if (!box) return;
+    var keep = { e: ($("#syEmail") || {}).value, p: ($("#syPass") || {}).value };
+    box.innerHTML = syncBoxHtml();
+    if ($("#syEmail") && keep.e) $("#syEmail").value = keep.e;
+    if ($("#syPass") && keep.p) $("#syPass").value = keep.p;
+    var go = function (fn) { var e = ($("#syEmail") || {}).value, pw = ($("#syPass") || {}).value; if (!e) { toast("Hãy nhập email."); return; } fn(e.trim(), pw || ""); };
+    var b;
+    if ((b = $("#syIn"))) b.addEventListener("click", function () { go(function (e, pw) { NRSync.signIn(e, pw); }); });
+    if ((b = $("#syUp"))) b.addEventListener("click", function () { go(function (e, pw) { NRSync.signUp(e, pw); }); });
+    if ((b = $("#syForgot"))) b.addEventListener("click", function () { go(function (e) { NRSync.resetPassword(e); }); });
+    if ((b = $("#syNow"))) b.addEventListener("click", function () { NRSync.syncNow(); });
+    if ((b = $("#syOut"))) b.addEventListener("click", function () { NRSync.signOut(); });
+  }
   function bindSettings() {
+    if (window.NRSync) { bindSyncBox(); }
     $("#goalIn").addEventListener("change", function (e) {
       var v = Math.max(3, Math.min(100, parseInt(e.target.value, 10) || 10)); S.goal = v; e.target.value = v; save(); toast("Đã đặt mục tiêu " + v + " mục mỗi ngày.");
     });
@@ -1356,7 +1391,8 @@
     $("#imp").addEventListener("change", function (e) { if (e.target.files[0]) importData(e.target.files[0]); });
     $("#upd").addEventListener("click", function () { forceUpdate(); });
     $("#reset").addEventListener("click", function () {
-      if (confirm("Xóa toàn bộ tiến độ trên thiết bị này? Việc này không hoàn tác được.")) { S = defaults(); save(); applyTheme(); route(); toast("Đã xóa tiến độ."); }
+      var cloud = window.NRSync && NRSync.state().user;
+      if (confirm(cloud ? "Xóa toàn bộ tiến độ? Vì đang đồng bộ, tiến độ trên MỌI thiết bị dùng tài khoản này cũng sẽ bị xóa. Không hoàn tác được." : "Xóa toàn bộ tiến độ trên thiết bị này? Việc này không hoàn tác được.")) { S = defaults(); S.resetAt = new Date().toISOString(); save(); applyTheme(); route(); toast("Đã xóa tiến độ."); }
     });
   }
   function exportData() {
@@ -1371,7 +1407,9 @@
         var o = JSON.parse(r.result);
         if (!o || typeof o !== "object" || !o.days || !o.srs) throw new Error("bad");
         if (!confirm("Nhập file sẽ thay thế tiến độ hiện tại trên thiết bị này. Tiếp tục?")) return;
-        S = Object.assign(defaults(), o); save(); applyTheme(); route(); toast("Đã nhập dữ liệu.");
+        var keepReset = S.resetAt || "";
+        S = Object.assign(defaults(), o); if ((S.resetAt || "") < keepReset) S.resetAt = keepReset; // giữ mốc xóa mới nhất để file nhập không bị bỏ khi đồng bộ
+        save(); applyTheme(); route(); toast("Đã nhập dữ liệu.");
       } catch (e) { toast("File không hợp lệ."); }
     };
     r.readAsText(file);
@@ -1429,6 +1467,18 @@
   applyTheme();
   initNotebook();
   route();
+  if (window.NRSync) {
+    NRSync.onChange(function () { if ($("#syncBox")) bindSyncBox(); });
+    NRSync.init({
+      get: function () { return S; },
+      set: function (n) { // nhận dữ liệu đã gộp từ đám mây
+        S = Object.assign(defaults(), n);
+        try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* bỏ qua */ }
+        applyTheme(); renderNav(currentSec);
+        if (!SESS && currentSec !== "settings") route();
+      }
+    });
+  }
   if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) {
     var hadController = !!navigator.serviceWorker.controller, reloaded = false;
     navigator.serviceWorker.addEventListener("controllerchange", function () { // bản mới vừa được kích hoạt
