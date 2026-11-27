@@ -4,7 +4,7 @@
   "use strict";
 
   /* ---------- Tiện ích ---------- */
-  var APP_VERSION = "v26"; // đổi cùng CACHE trong sw.js và ?v= trong index.html mỗi lần phát hành
+  var APP_VERSION = "v27"; // đổi cùng CACHE trong sw.js và ?v= trong index.html mỗi lần phát hành
   var KEY = "nrcdtc.v1";
   var INTERVALS = [0, 1, 3, 7, 14, 30]; // số ngày chờ theo "hộp" (spaced repetition)
   var $ = function (s, r) { return (r || document).querySelector(s); };
@@ -26,6 +26,12 @@
     return a;
   };
   var norm = function (s) { return String(s).toLowerCase().replace(/[’‘]/g, "'").replace(/\s+/g, " ").trim(); };
+  // Ngày ghi nhận dạng yyyy-mm-dd (lưu trữ) -> dd-mm-yyyy, kèm giờ nếu có.
+  var fmtDT = function (at, time) {
+    var p = String(at || "").split("-"), d = p.length === 3 ? p[2] + "-" + p[1] + "-" + p[0] : String(at || "");
+    return d + (time ? " lúc " + time : "");
+  };
+  var nowHM = function () { var n = new Date(); return pad(n.getHours()) + ":" + pad(n.getMinutes()); };
   var WD = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
 
   /* ---------- Dữ liệu nội dung ---------- */
@@ -374,7 +380,7 @@
       return { pct: Math.round(Math.min(100, pct)), text: st.label };
     }
     function result(s) {
-      var R = { at: today(), gl: st.passed.length ? st.passed[st.passed.length - 1] : "", vl: "", scores: st.scores, stop: st.stop, byTopic: {}, tinfo: {}, vs: {} };
+      var R = { at: today(), time: nowHM(), gl: st.passed.length ? st.passed[st.passed.length - 1] : "", vl: "", scores: st.scores, stop: st.stop, byTopic: {}, tinfo: {}, vs: {} };
       for (var i = 0; i < PL_LEVELS.length; i++) {
         var g = s.grp["V:" + PL_LEVELS[i]]; if (g) R.vs[PL_LEVELS[i]] = g.ok + "/" + g.n;
         if (g && g.n && g.ok / g.n >= 0.7) R.vl = PL_LEVELS[i]; else break;
@@ -409,9 +415,9 @@
       onFinish: function (pct, s) {
         var R = result(s); cfg._R = R;
         var prev = S.placement && S.placement.gl !== undefined ? S.placement : null;
-        R.prev = prev ? { at: prev.at, gl: prev.gl, vl: prev.vl } : null;
+        R.prev = prev ? { at: prev.at, time: prev.time, gl: prev.gl, vl: prev.vl } : null;
         S.placement = Object.assign({}, R, { pct: pct, start: R.path[0] || null, skip: S.placement && S.placement.skip === false ? false : true });
-        S.placeHist = (S.placeHist || []).concat([{ at: R.at, gl: R.gl, vl: R.vl, pct: pct }]).slice(-10);
+        S.placeHist = (S.placeHist || []).concat([{ at: R.at, time: R.time, gl: R.gl, vl: R.vl, pct: pct }]).slice(-10);
         S.placeUsed = s.items.filter(function (it) { return it.id.charAt(0) === "g"; }).map(function (it) { return it.id; });
         S.placeWords = s.items.filter(function (it) { return it.id.charAt(0) === "v"; }).map(function (it) { return it.id; });
       },
@@ -426,7 +432,7 @@
         if (GR.some(function (t) { return R.tinfo[t.id].st === "likely"; })) notes.push("Chủ đề chưa hỏi ở bậc đã vượt qua được coi là có vẻ vững; có thể mở bài để chắc hơn.");
         if (R.stop && R.scores[R.stop] === 4) notes.push("Bậc " + R.stop + " sát ngưỡng (4/6), có thể làm lại sau vài bài ôn.");
         if (!R.gl) notes.push("Chưa vượt bậc A1, nên bắt đầu từ các bài A1.");
-        var cmp = R.prev ? '<p class="muted">Lần trước (' + R.prev.at + "): ngữ pháp " + dispLv(R.prev.gl) + ", từ vựng " + dispLv(R.prev.vl) + ".</p>" : "";
+        var cmp = R.prev ? '<p class="muted">Lần trước (' + fmtDT(R.prev.at, R.prev.time) + "): ngữ pháp " + dispLv(R.prev.gl) + ", từ vựng " + dispLv(R.prev.vl) + ".</p>" : "";
         var map = GR.map(function (t) {
           var f = R.tinfo[t.id];
           return '<a class="tchip ' + f.st + '" href="#/grammar/' + t.id + '"><span class="cefr small">' + t.cefr + "</span> " + esc(t.title) + "<small>" + statLabel[f.st] + (f.n ? " · " + f.ok + "/" + f.n : "") + "</small></a>";
@@ -603,10 +609,10 @@
     var H = S.placeHist || [], last = H[H.length - 1], prev = H[H.length - 2];
     var idx = function (l) { return l ? ["A1", "A2", "B1"].indexOf(l) + 1 : 0; };
     var diff = function (a, b, name) { if (!prev) return ""; var d = idx(a) - idx(b); return name + (d > 0 ? " tăng " + d + " bậc" : d < 0 ? " giảm " + (-d) + " bậc" : " giữ nguyên"); };
-    var cmp = prev ? '<p class="muted">So với lần trước (' + prev.at + "): " + [diff(last.gl, prev.gl, "ngữ pháp"), diff(last.vl, prev.vl, "từ vựng")].join(", ") + ".</p>" : '<p class="muted">Làm lại sau vài tuần để so sánh tiến bộ.</p>';
+    var cmp = prev ? '<p class="muted">So với lần trước (' + fmtDT(prev.at, prev.time) + "): " + [diff(last.gl, prev.gl, "ngữ pháp"), diff(last.vl, prev.vl, "từ vựng")].join(", ") + ".</p>" : '<p class="muted">Làm lại sau vài tuần để so sánh tiến bộ.</p>';
     return '<section class="card" style="margin-top:16px"><h2>Kết quả kiểm tra đầu vào</h2><div class="plgrid" style="margin-top:10px"><div class="plbox"><span class="lbl">Bậc ngữ pháp</span><div class="big">' + esc(dispLv(P.gl)) +
       '</div></div><div class="plbox"><span class="lbl">Bậc từ vựng</span><div class="big">' + esc(dispLv(P.vl)) + "</div></div></div>" + cmp +
-      (H.length ? '<div class="phist">' + H.map(function (h) { return '<div class="prow"><span>' + h.at + "</span><span>NP " + esc(dispLv(h.gl)) + " · TV " + esc(dispLv(h.vl)) + '</span><div class="bar"><i style="width:' + h.pct + '%"></i></div><b>' + h.pct + "%</b></div>"; }).join("") + "</div>" : "") +
+      (H.length ? '<div class="phist">' + H.map(function (h) { return '<div class="prow"><span>' + fmtDT(h.at, h.time) + "</span><span>NP " + esc(dispLv(h.gl)) + " · TV " + esc(dispLv(h.vl)) + '</span><div class="bar"><i style="width:' + h.pct + '%"></i></div><b>' + h.pct + "%</b></div>"; }).join("") + "</div>" : "") +
       '<div class="actions"><a class="btn small ghost" href="#/placement">Làm lại</a></div></section>';
   }
   function bindDashboard() {
@@ -622,8 +628,8 @@
   /* ---------- Màn hình: Ngữ pháp ---------- */
   function viewGrammarList() {
     var banner = '<div class="card" style="margin-top:16px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><div><h3>Kiểm tra đầu vào</h3><p class="muted">' +
-      (S.placement && S.placement.gl !== undefined ? "Lần gần nhất " + S.placement.at + ": ngữ pháp " + dispLv(S.placement.gl) + ", từ vựng " + dispLv(S.placement.vl) + ". Làm lại sau vài tuần để xem tiến bộ."
-        : S.placement ? "Bản cũ làm ngày " + S.placement.at + ". Làm lại để biết bậc CEFR." : "Khoảng 15 phút: xác định bậc ngữ pháp, bậc từ vựng và chủ đề nào nên học trước.") +
+      (S.placement && S.placement.gl !== undefined ? "Lần gần nhất " + fmtDT(S.placement.at, S.placement.time) + ": ngữ pháp " + dispLv(S.placement.gl) + ", từ vựng " + dispLv(S.placement.vl) + ". Làm lại sau vài tuần để xem tiến bộ."
+        : S.placement ? "Bản cũ làm ngày " + fmtDT(S.placement.at) + ". Làm lại để biết bậc CEFR." : "Khoảng 15 phút: xác định bậc ngữ pháp, bậc từ vựng và chủ đề nào nên học trước.") +
       '</p></div><a class="btn" href="#/placement">' + (S.placement ? "Làm lại" : "Bắt đầu") + "</a></div>";
     var tools = '<div class="card" style="margin-top:16px"><h3>Công cụ ôn luyện</h3><div class="actions" style="margin-top:10px">' +
       '<a class="btn small" href="#/grammar/mix/A1">Ôn tổng hợp A1</a><a class="btn small" href="#/grammar/mix/A2">Ôn tổng hợp A2</a><a class="btn small" href="#/grammar/mix/B1">Ôn tổng hợp B1</a><a class="btn small ghost" href="#/grammar/mix/all">Trộn tất cả</a>' +

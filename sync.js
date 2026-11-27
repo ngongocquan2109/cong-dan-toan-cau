@@ -65,7 +65,7 @@
       out.selfwrite[k] = arr;
     });
     var pa = L.placement, pb = R.placement;
-    if (pa || pb) out.placement = !pa ? pb : !pb ? pa : ((pa.at || "") >= (pb.at || "") ? pa : pb);
+    if (pa || pb) out.placement = !pa ? pb : !pb ? pa : (((pa.at || "") + (pa.time || "")) >= ((pb.at || "") + (pb.time || "")) ? pa : pb);
     return out;
   }
 

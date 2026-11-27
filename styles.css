@@ -300,7 +300,7 @@ textarea.input { resize: vertical; min-height: 90px; }
 .plpath li { padding: 4px 0; }
 .plpath a { font-weight: 600; text-decoration: underline; }
 .phist { margin-top: 12px; }
-.prow { display: grid; grid-template-columns: 96px 150px 1fr 44px; gap: 10px; align-items: center; padding: 6px 0; border-top: 1px solid var(--line); font-size: 14px; }
+.prow { display: grid; grid-template-columns: 170px 150px 1fr 44px; gap: 10px; align-items: center; padding: 6px 0; border-top: 1px solid var(--line); font-size: 14px; }
 .prow b { text-align: right; }
 
 /* Nút nổi: Zen và Sổ tay, bảng Sổ tay */
@@ -355,7 +355,7 @@ body.zen main { padding-bottom: 80px; }
   .mrow { grid-template-columns: 1fr; gap: 2px; }
   .deckform { grid-template-columns: 1fr; }
   .plgrid { grid-template-columns: 1fr; }
-  .prow { grid-template-columns: 80px 1fr 44px; }
+  .prow { grid-template-columns: 112px 1fr 44px; }
   .prow .bar { grid-column: 1 / 4; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
