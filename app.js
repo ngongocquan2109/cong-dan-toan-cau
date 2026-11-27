@@ -4,7 +4,7 @@
   "use strict";
 
   /* ---------- Tiện ích ---------- */
-  var APP_VERSION = "v28"; // đổi cùng CACHE trong sw.js và ?v= trong index.html mỗi lần phát hành
+  var APP_VERSION = "v29"; // đổi cùng CACHE trong sw.js và ?v= trong index.html mỗi lần phát hành
   var KEY = "nrcdtc.v1";
   var INTERVALS = [0, 1, 3, 7, 14, 30]; // số ngày chờ theo "hộp" (spaced repetition)
   var $ = function (s, r) { return (r || document).querySelector(s); };
@@ -47,6 +47,7 @@
   // Gắn bậc CEFR, mức khó, lỗi thường gặp, câu hỏi mới vào từng chủ đề, rồi xếp lộ trình theo bậc.
   GR.forEach(function (t) {
     t.see = t.see || SEE[t.id];
+    t.insight = (window.GRAMMAR_DEEP || {})[t.id];
     var p = GP[t.id]; if (!p) { t.cefr = t.cefr || "A1"; t.questions.forEach(function (q) { q.lv = q.lv || "m"; }); return; }
     t.cefr = p.cefr; t.formula = p.formula; t.walk = p.walk; t.mistakes = p.mistakes; t.check = p.check;
     t.questions.forEach(function (q, i) { q.lv = p.lv.charAt(i) || "m"; });
@@ -184,7 +185,7 @@
 
   function renderNav(active) {
     var due = dueIds().length;
-    var items = [["", "Tổng quan"], ["grammar", "Ngữ pháp"], ["vocab", "Từ vựng"], ["phrases", "Mẫu câu"], ["review", "Ôn tập"], ["settings", "Cài đặt"]];
+    var items = [["", "Tổng quan"], ["grammar", "Ngữ pháp"], ["vocab", "Từ vựng"], ["phrases", "Mẫu câu"], ["review", "Ôn tập"]];
     $("#nav").innerHTML = items.map(function (it) {
       var badge = it[0] === "review" && due ? '<span class="badge">' + due + "</span>" : "";
       return '<a href="#/' + it[0] + '" class="' + (active === it[0] ? "active" : "") + '">' + it[1] + badge + "</a>";
@@ -463,7 +464,7 @@
     var k = today(), d = dayOf(k), g = S.goal;
     var pct = Math.min(100, Math.round(d.done / g * 100));
     var tot = totals();
-    var acc = tot.c + tot.w ? Math.round(tot.c / (tot.c + tot.w) * 100) : null;
+    var acc = tot.c + tot.w >= 10 ? Math.round(tot.c / (tot.c + tot.w) * 100) : null;
     var due = dueIds().length, st = streak();
     var msg = d.done >= g ? "Đã đủ mục tiêu hôm nay, streak được giữ." : "Còn " + (g - d.done) + " câu nữa để giữ streak.";
     var level = Math.floor(S.xp / 200) + 1, toNext = 200 - (S.xp % 200);
@@ -488,7 +489,7 @@
     function wk(from) {
       var n = 0, c = 0, w = 0;
       for (var j = from; j < from + 7; j++) { var x = dayOf(addDays(k, -j)); n += x.done; c += x.correct; w += x.wrong; }
-      return { n: n, acc: c + w ? Math.round(c / (c + w) * 100) : null };
+      return { n: n, acc: c + w >= 10 ? Math.round(c / (c + w) * 100) : null };
     }
     var a = wk(0), b = wk(7);
     var best = bestStreak(), studied = Object.keys(S.days).filter(function (x) { return S.days[x].done > 0; }).length;
@@ -666,6 +667,17 @@
       html += '<div class="card sec"><h2>' + esc(s.heading) + "</h2><p>" + esc(s.body) + "</p>" + table +
         '<ul class="ex">' + s.examples.map(function (e) { return "<li><div><b>" + esc(e.en) + "</b><span>" + esc(e.vi) + "</span></div>" + add(e.en, e.vi) + "</li>"; }).join("") + "</ul></div>";
     });
+    if (t.insight) {
+      var ins = t.insight;
+      html += '<div class="card sec deep"><p class="eyebrow">Hiểu sâu</p><h2>Vì sao lại như vậy?</h2><p>' + esc(ins.idea) + "</p>" +
+        (ins.whys || []).map(function (w) { return '<details class="why"><summary>' + esc(w[0]) + "</summary><p>" + esc(w[1]) + "</p></details>"; }).join("") +
+        (ins.contrast ? '<h3>' + esc(ins.contrast.head) + '</h3><div class="cmp">' + ins.contrast.rows.map(function (r) {
+          return '<div class="cmprow"><div class="cmpa"><span class="lbl">A</span><b>' + esc(r[0]) + '</b></div><div class="cmpb"><span class="lbl">B</span><b>' + esc(r[1]) + '</b></div><p class="muted">' + esc(r[2]) + "</p></div>";
+        }).join("") + "</div>" : "") +
+        ((ins.explain || []).length ? '<h3>Tự giải thích bằng lời của bạn</h3><p class="muted">Nghĩ câu trả lời trong đầu (hoặc nói to), rồi mở đáp án mẫu để đối chiếu. Giải thích được mới là hiểu.</p>' + ins.explain.map(function (q) {
+          return '<details class="why"><summary>' + esc(q[0]) + "</summary><p><b>Đáp án mẫu:</b> " + esc(q[1]) + "</p></details>";
+        }).join("") : "") + "</div>";
+    }
     if (t.walk) {
       html += '<div class="card sec"><h2>Phân tích ví dụ</h2><p class="muted">Đọc câu tiếng Anh trước, đoán nghĩa, rồi xem phần giải thích.</p>' +
         t.walk.map(function (e, i) {
@@ -784,6 +796,7 @@
   function startSession(cfg) {
     SESS = Object.assign({ chosen: [], i: 0, ok: 0, bad: 0, rem: 0, forgot: 0, answered: false, picked: null, flip: false, wrong: [], xp0: S.xp, byTopic: {}, grp: {} }, cfg);
     SESS.items = cfg.build();
+    document.body.classList.add("insession");
     renderSession();
   }
   function sessionBar() {
@@ -792,7 +805,7 @@
       var pg = s.progress(s);
       return '<div class="sbar"><a class="back" href="' + s.exit + '" style="margin:0">✕ Thoát</a><div class="bar"><i style="width:' + pg.pct + '%"></i></div><span class="muted">' + esc(pg.text) + "</span></div>";
     }
-    return '<div class="sbar"><a class="back" href="' + s.exit + '" style="margin:0">✕ Thoát</a><div class="bar"><i style="width:' + Math.round(s.i / total * 100) + '%"></i></div><span class="muted">' + Math.min(s.i + 1, total) + "/" + total + "</span></div>";
+    return '<div class="sbar"><a class="back" href="' + s.exit + '" style="margin:0">✕ Thoát</a><div class="bar"><i style="width:' + Math.round((s.i + (s.answered ? 1 : 0)) / total * 100) + '%"></i></div><span class="muted">' + Math.min(s.i + 1, total) + "/" + total + "</span></div>";
   }
   function renderSession() {
     var s = SESS, view = $("#view");
@@ -890,6 +903,8 @@
     renderSession();
   }
   function finishSession() {
+    document.body.classList.remove("insession");
+    if (SESS) SESS.done = true;
     var s = SESS, total = s.ok + s.bad, pct = total ? Math.round(s.ok / total * 100) : 0;
     if (s.onFinish && total) s.onFinish(pct, s);
     checkBadges(); save();
@@ -1441,7 +1456,8 @@
     var p = location.hash.replace(/^#\/?/, "").split("/").filter(Boolean);
     var sec = p[0] || "", html = "", binder = null;
     if (window.__reloadLater) { location.reload(); return; } // có bản mới: tải lại khi Ngài chuyển trang
-    SESS = null; currentSec = sec;
+    SESS = null; currentSec = sec; lastHash = location.hash;
+    document.body.classList.remove("insession");
     window.scrollTo(0, 0);
     setZen(false);
     $("#zenBtn").hidden = !(sec === "grammar" && p[1] && !p[2]); // Zen chỉ có ở trang bài học
@@ -1472,7 +1488,14 @@
     renderNav(sec === "placement" || sec === "book" || sec === "appendix" ? "grammar" : sec === "deck" ? "review" : sec);
     if (html !== null) { $("#view").innerHTML = html; if (binder) binder(); }
   }
-  window.addEventListener("hashchange", route);
+  var lastHash = location.hash, restoring = false;
+  window.addEventListener("hashchange", function () {
+    if (restoring) { restoring = false; return; }
+    if (SESS && !SESS.done && (SESS.ok + SESS.bad + SESS.rem + SESS.forgot > 0 || SESS.answered) && !confirm("Thoát? Kết quả phiên này sẽ không được lưu.")) {
+      restoring = true; location.hash = lastHash; return; // ở lại đúng câu đang làm
+    }
+    route();
+  });
 
   /* ---------- Khởi động ---------- */
   applyTheme();

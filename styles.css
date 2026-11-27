@@ -70,6 +70,10 @@ p { margin: 0; }
   background: var(--cardb); display: inline-flex; align-items: center; justify-content: center;
 }
 .iconbtn svg { width: 20px; height: 20px; }
+a.iconbtn { color: inherit; }
+.topbtns { display: flex; gap: 8px; align-items: center; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+body.insession #nav, body.insession .fabs { display: none; }
 
 main { max-width: 1180px; margin: 0 auto; padding: 14px 20px 60px; }
 
@@ -316,7 +320,8 @@ textarea.input { resize: vertical; min-height: 90px; }
 .notepanel .input { font-size: 16px; padding: 10px 14px; margin-top: 6px; }
 .nres { display: flex; justify-content: space-between; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line); margin-top: 8px; }
 .nbtn { display: flex; flex-direction: column; gap: 6px; flex: none; }
-body.zen .top, body.zen .pillnav { display: none; }
+body.zen .brand, body.zen .pillnav, body.zen #setBtn { display: none; }
+body.zen .top { justify-content: flex-end; }
 body.zen main { padding-bottom: 80px; }
 
 /* Điện thoại: thanh điều hướng xuống đáy */
@@ -325,7 +330,7 @@ body.zen main { padding-bottom: 80px; }
   .brandtext small { display: none; }
   .pillnav {
     position: fixed; bottom: calc(30px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); z-index: 40;
-    display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0;
+    display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0;
     width: calc(100vw - 20px); max-width: 440px; border: 1px solid rgba(255, 255, 255, .14); box-shadow: 0 10px 30px rgba(0, 0, 0, .45);
   }
   .pillnav a { padding: 14px 0; font-size: clamp(10.5px, 3vw, 13px); white-space: nowrap; justify-content: center; text-align: center; }
@@ -407,3 +412,13 @@ body.zen main { padding-bottom: 80px; }
 .syshow input { width: 20px; height: 20px; }
 .sitefoot { text-align: center; color: var(--muted); font-size: 13px; line-height: 1.5; padding: 28px 16px 48px; max-width: 720px; margin: 0 auto; }
 @media (max-width: 760px) { .sitefoot { padding-bottom: calc(200px + env(safe-area-inset-bottom)); } }
+
+.deep { border-left: 4px solid var(--accent, #2f6fed); }
+.deep h3 { margin: 18px 0 6px; font-size: 1rem; }
+.why { margin-top: 8px; padding: 10px 14px; border-radius: 14px; background: var(--chip); }
+.why summary { cursor: pointer; font-weight: 600; }
+.why p { margin: 8px 0 0; }
+.cmp { display: grid; gap: 12px; margin-top: 8px; }
+.cmprow { padding: 12px 14px; border-radius: 16px; background: var(--chip); }
+.cmpa, .cmpb { display: flex; gap: 8px; align-items: baseline; margin-bottom: 4px; }
+.cmprow p { margin: 6px 0 0; }
