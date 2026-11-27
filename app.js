@@ -4,7 +4,7 @@
   "use strict";
 
   /* ---------- Tiện ích ---------- */
-  var APP_VERSION = "v34.1"; // đổi cùng CACHE trong sw.js và ?v= trong index.html mỗi lần phát hành
+  var APP_VERSION = "v35"; // đổi cùng CACHE trong sw.js và ?v= trong index.html mỗi lần phát hành
   var KEY = "nrcdtc.v1";
   var INTERVALS = [0, 1, 3, 7, 14, 30]; // số ngày chờ theo "hộp" (spaced repetition)
   var $ = function (s, r) { return (r || document).querySelector(s); };
@@ -481,8 +481,18 @@
     var msg = d.done >= g ? "Đã đủ mục tiêu hôm nay, streak được giữ." : "Còn " + (g - d.done) + " câu nữa để giữ streak.";
     var level = Math.floor(S.xp / 200) + 1, toNext = 200 - (S.xp % 200);
     var nt = nextGrammar();
-    var nextHtml = '<div class="actions">' + (nt ? '<a class="btn small" href="#/grammar/' + nt.id + '">Bài tiếp theo: ' + esc(nt.title) + "</a>" : "") +
-      (S.placement ? "" : '<a class="btn ghost small" href="#/placement">Làm kiểm tra đầu vào</a>') + "</div>";
+    // Một nút chính duy nhất: ôn đến hạn > bài tiếp theo > luyện lỗi hay sai; các nút còn lại là nút phụ
+    var wk3 = weakTags(), prim, sec = [];
+    if (due) prim = { href: "#/review", label: "Ôn ngay (" + due + " mục)" };
+    else if (nt) prim = { href: "#/grammar/" + nt.id, label: "Học: " + nt.title };
+    else if (wk3.length) prim = { href: "#/review/weak", label: "Luyện lỗi hay sai" };
+    else prim = { href: "#/grammar", label: "Mở danh sách ngữ pháp" };
+    if (due && nt) sec.push({ href: "#/grammar/" + nt.id, label: "Bài tiếp theo: " + nt.title });
+    if (prim.href !== "#/review/weak" && wk3.length) sec.push({ href: "#/review/weak", label: "Luyện lỗi hay sai" });
+    if (prim.href !== "#/review") sec.push({ href: "#/review", label: "Xem mục ôn tập" });
+    if (!S.placement) sec.push({ href: "#/placement", label: "Làm kiểm tra đầu vào" });
+    var nextHtml = '<div class="actions todaybtns"><a class="btn mainbtn" href="' + prim.href + '">' + esc(prim.label) + "</a>" +
+      sec.map(function (b) { return '<a class="btn ghost small" href="' + b.href + '">' + esc(b.label) + "</a>"; }).join("") + "</div>";
 
     // Biểu đồ 7 ngày
     var cols = [], max = Math.max(g, 1);
@@ -548,31 +558,35 @@
         '<div class="card heroR"><span class="lbl">XP · Cấp ' + level + '</span><div class="big">' + S.xp + '<small> XP</small></div>' +
           '<p class="muted">Còn ' + toNext + ' XP để lên cấp ' + (level + 1) + '</p>' +
           '<div style="margin-top:18px"><span class="lbl">Cần ôn hôm nay</span><div class="big">' + due + '<small> mục</small></div></div>' +
-          '<div class="actions"><a class="btn" href="#/review">' + (due ? "Ôn ngay" : "Xem mục ôn tập") + "</a></div></div>" +
+          '</div>' +
         clockCard(d.done, g) +
       "</section>" +
-      '<section class="card" style="margin-top:16px"><h2>Lộ trình CEFR</h2><p class="muted">Số bài ngữ pháp đã vững và số sao theo từng bậc.</p>' + ["A1", "A2", "B1"].map(function (c) {
+      dsec("cefr", "Lộ trình CEFR", '<section class="card" style="margin-top:12px"><p class="muted">Số bài ngữ pháp đã vững và số sao theo từng bậc.</p>' + ["A1", "A2", "B1"].map(function (c) {
         var n = GR.filter(function (x) { return x.cefr === c; }), dn = n.filter(gDone).length, st = n.reduce(function (a, t) { return a + stars(t); }, 0);
         return '<div class="crow"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><span><span class="cefr small">' + c + "</span> " + esc(CEFR_NAME[c]) + "</span><b>" + dn + "/" + n.length + " bài vững · " + st + "/" + n.length * 3 + ' sao</b></div><div class="bar"><i style="width:' + (n.length ? Math.round(dn / n.length * 100) : 0) + '%"></i></div></div>';
-      }).join("") + "</section>" +
-      placementCard() +
-      '<section class="grid two">' +
-        '<div class="card"><h2>7 ngày gần đây</h2><p class="muted">Số câu và thẻ mỗi ngày. Cột xanh chanh là ngày đủ mục tiêu.</p><div class="chart">' + cols.join("") + "</div>" +
+      }).join("") + "</section>") +
+      (placementCard() ? dsec("place", "Kết quả kiểm tra đầu vào", placementCard()) : "") +
+      dsec("week", "7 ngày và báo cáo tuần", '<section class="grid two" style="margin-top:12px">' +
+        '<div class="card"><h3>7 ngày gần đây</h3><p class="muted">Số câu và thẻ mỗi ngày. Cột xanh chanh là ngày đủ mục tiêu.</p><div class="chart">' + cols.join("") + "</div>" +
           '<h3 style="margin-top:18px">Mục tiêu tuần: ' + wkHit + "/5 ngày đạt mục tiêu</h3><p class=\"muted\">Học đủ mục tiêu ít nhất 5 ngày mỗi tuần (T2 đến CN) là một thói quen tốt.</p>" +
           '<div class="wdots">' + wdots.join("") + "</div>" + (wkHit >= 5 ? '<p class="delta up" style="margin-top:8px">Đã đạt mục tiêu tuần này!</p>' : "") + "</div>" +
-        '<div class="card"><h2>Báo cáo tuần</h2>' +
+        '<div class="card"><h3>Báo cáo tuần</h3>' +
           '<div class="report"><div><span class="lbl">Số câu tuần này</span><div class="big">' + a.n + "</div>" + delta(a.n, b.n, " câu") + "</div>" +
           '<div><span class="lbl">Chính xác</span><div class="big">' + (a.acc === null ? "–" : a.acc + "%") + "</div>" + delta(a.acc, b.acc, "%") + "</div></div>" +
           '<h3 style="margin-top:18px">Lịch 28 ngày</h3><div class="cal">' + cal.join("") + "</div></div>" +
-      "</section>" +
-      '<section class="panel">' +
-        '<div><h2>Tiến độ theo chủ đề</h2>' + list.map(function (x) {
+      "</section>") +
+      dsec("topics", "Tiến độ theo chủ đề, lỗi và huy hiệu", '<section class="panel" style="margin-top:12px">' +
+        '<div>' + list.map(function (x) {
           return '<div class="row ' + (x.key === dashSel ? "active" : "") + '" data-sel="' + x.key + '"><div><b>' + esc(x.title) + "</b><small>" + x.kind + "</small></div>" + pill(x.st) + "</div>";
         }).join("") + "</div>" +
         '<div class="detail">' + (sel ? "<h3>" + esc(sel.title) + '</h3><p class="muted">' + sel.kind + " · " + sel.st[0] + '</p><div class="actions"><a class="btn dark small" href="' + sel.href + '">Mở chủ đề</a></div>' : "") +
           '<h3 style="margin-top:20px">Lỗi hay sai</h3>' + errHtml + (errs.length ? '<div class="actions"><a class="btn dark small" href="#/review/weak">Luyện các lỗi này</a></div>' : "") +
           '<h3 style="margin-top:20px">Huy hiệu</h3><div class="badges">' + bdg + "</div></div>" +
-      "</section>";
+      "</section>");
+  }
+  var dashOpen = {}; // trạng thái mở/gập các khối ở Tổng quan, chỉ giữ trong bộ nhớ
+  function dsec(key, title, inner) {
+    return '<details class="dsec" data-dsec="' + key + '"' + (dashOpen[key] ? " open" : "") + "><summary>" + esc(title) + "</summary>" + inner + "</details>";
   }
   /* ---------- Đồng hồ kim ở Tổng quan, vòng cung quanh mặt là tiến độ hôm nay ---------- */
   var DAYS_FULL = ["Chủ nhật", "Thứ hai", "Thứ ba", "Thứ tư", "Thứ năm", "Thứ sáu", "Thứ bảy"];
@@ -630,6 +644,9 @@
   }
   function bindDashboard() {
     startClock();
+    document.querySelectorAll("details[data-dsec]").forEach(function (el) {
+      el.addEventListener("toggle", function () { dashOpen[el.getAttribute("data-dsec")] = el.open; });
+    });
     document.querySelectorAll("[data-goal]").forEach(function (el) {
       el.addEventListener("click", function () { S.goal = Number(el.getAttribute("data-goal")); save(); toast("Đã đặt mục tiêu " + S.goal + " mục mỗi ngày."); $("#view").innerHTML = viewDashboard(); bindDashboard(); });
     });
@@ -670,14 +687,16 @@
     var add = function (en, vi) { return '<button class="addrev" type="button" data-f="' + esc(en) + '" data-b="' + esc(vi) + '">+ Ôn tập</button>'; };
     var hasMist = t.mistakes && t.mistakes.length;
     var html = '<div class="lesson"><a class="back" href="#/grammar">← Ngữ pháp</a><h1>' + esc(t.title) + ' <span class="cefr">' + t.cefr + "</span></h1>" +
-      '<div class="card core"><div><p class="eyebrow">Trọng tâm</p><p>' + esc(t.summary) + "</p></div>" +
+      '<div class="card core" id="ls-core"><div><p class="eyebrow">Trọng tâm</p><p>' + esc(t.summary) + "</p></div>" +
       (t.formula ? '<div class="formula"><p class="eyebrow">Cấu trúc chính</p><b>' + esc(t.formula) + "</b></div>" : "") + ((GPR[t.id] || {}).timeline ? renderTimeline(GPR[t.id].timeline) : "") + "</div>";
+    var firstSec = true;
     t.sections.forEach(function (s) {
       if (hasMist && /lỗi/i.test(s.heading)) return; // đã có phần "Lỗi thường gặp" dạng Sai/Đúng bên dưới
       var table = s.table ? '<table class="t"><thead><tr>' + s.table[0].map(function (h) { return "<th>" + esc(h) + "</th>"; }).join("") + "</tr></thead><tbody>" +
         s.table.slice(1).map(function (r) { return "<tr>" + r.map(function (c) { return "<td>" + esc(c) + "</td>"; }).join("") + "</tr>"; }).join("") + "</tbody></table>" : "";
-      html += '<div class="card sec"><h2>' + esc(s.heading) + "</h2><p>" + esc(s.body) + "</p>" + table +
+      html += '<div class="card sec"' + (firstSec ? ' id="ls-use"' : "") + '><h2>' + esc(s.heading) + "</h2><p>" + esc(s.body) + "</p>" + table +
         '<ul class="ex">' + s.examples.map(function (e) { return "<li><div><b>" + esc(e.en) + "</b><span>" + esc(e.vi) + "</span></div>" + add(e.en, e.vi) + "</li>"; }).join("") + "</ul></div>";
+      firstSec = false;
     });
     if (t.insight) {
       var ins = t.insight;
@@ -691,14 +710,14 @@
         }).join("") : "") + "</div>";
     }
     if (t.walk) {
-      html += '<div class="card sec"><h2>Phân tích ví dụ</h2><p class="muted">Đọc câu tiếng Anh trước, đoán nghĩa, rồi xem phần giải thích.</p>' +
+      html += '<div class="card sec" id="ls-walk"><h2>Phân tích ví dụ</h2><p class="muted">Đọc câu tiếng Anh trước, đoán nghĩa, rồi xem phần giải thích.</p>' +
         t.walk.map(function (e, i) {
           return '<div class="walk"><div class="walkhead"><b>' + esc(e.en) + "</b>" + add(e.en, e.vi) + '</div><div class="walkrow"><span class="lbl">Nghĩa</span><span>' + esc(e.vi) + '</span></div>' +
             '<div class="walkrow"><span class="lbl">Cấu trúc và ngữ cảnh</span><span>' + esc(e.note) + "</span></div></div>";
         }).join("") + "</div>";
     }
     if (hasMist) {
-      html += '<div class="card sec"><h2>Lỗi thường gặp</h2><p class="muted">Đối chiếu câu sai với câu đúng để nhớ lý do.</p>' +
+      html += '<div class="card sec" id="ls-mist"><h2>Lỗi thường gặp</h2><p class="muted">Đối chiếu câu sai với câu đúng để nhớ lý do.</p>' +
         t.mistakes.map(function (m) {
           return '<div class="mist"><div class="mrow bad"><span class="lbl">Chưa đúng</span><b>' + esc(m.wrong) + '</b></div><div class="mrow good"><span class="lbl">Đã sửa</span><b>' + esc(m.right) +
             "</b>" + add(m.right, m.why) + '</div><p class="muted">' + esc(m.why) + "</p></div>";
@@ -712,7 +731,7 @@
     }
     html += practiceCard(t);
     var nq = function (l) { return t.questions.filter(function (q) { return q.lv === l; }).length; };
-    html += '<div class="card sec"><h2>Làm bài kiểm tra</h2><p class="muted">Chọn mức. Đúng từ 80% thì được sao của mức đó.</p><div class="lvls">' +
+    html += '<div class="card sec" id="ls-quiz"><h2>Làm bài kiểm tra</h2><p class="muted">Chọn mức. Đúng từ 80% thì được sao của mức đó.</p><div class="lvls">' +
       ["e", "m", "h"].map(function (l, i) {
         var b = lvBest(t, l);
         return '<a class="lvbtn" href="#/grammar/' + t.id + "/quiz/" + l + '"><b>' + LV[l] + "</b><span class=\"stars\">" + "★".repeat(i + 1) + "☆".repeat(2 - i) + "</span><small>" + nq(l) + " câu" + (b ? " · tốt nhất " + b + "%" : "") + "</small>" + (b >= 80 ? '<i class="got">Đã đạt</i>' : "") + "</a>";
@@ -729,8 +748,13 @@
       var links = t.see.map(function (id) { var o = GR.filter(function (x) { return x.id === id; })[0]; return o ? '<a class="btn ghost small" href="#/grammar/' + o.id + '">' + esc(o.title) + "</a>" : ""; }).join("");
       if (links) html += '<div class="card sec"><h2>Xem thêm</h2><p class="muted">Các bài liên quan nên học tiếp.</p><div class="actions">' + links + "</div></div>";
     }
-    return html + "</div>";
+    var toc = [["ls-core", "Trọng tâm"], ["ls-use", firstSec ? "" : "Cách dùng"], ["ls-walk", t.walk ? "Phân tích ví dụ" : ""], ["ls-mist", hasMist ? "Lỗi" : ""],
+      ["practice", by0(t) ? "Mổ xẻ" : ""], ["ls-quiz", "Làm bài"]].filter(function (c) { return c[1]; });
+    var tocHtml = '<nav class="lstoc" aria-label="Mục lục bài học">' + toc.map(function (c) { return '<button class="tocchip" type="button" data-go="' + c[0] + '">' + c[1] + "</button>"; }).join("") + "</nav>";
+    html = html.replace('</h1><div', '</h1>' + tocHtml + '<div');
+    return html + '<button class="lsfab" type="button" data-go="ls-quiz">Làm bài ↓</button></div>';
   }
+  function by0(t) { return Object.keys(practiceIds(t.id)).length > 0; }
   /* ---------- Mổ xẻ ngữ pháp (Phần L): thẻ trong bài, trang luyện, dòng thời gian ---------- */
   function renderTimeline(tl) { // 3 hình: experience = chấm mờ, result = chấm + mũi tên, span = đoạn liền; màu lấy từ biến CSS
     var NOW = 250, Y = 44;
@@ -773,6 +797,16 @@
     cfg.cfg = cfg; startSession(cfg); return null;
   }
   function bindLesson() {
+    var hd = $(".top"), tc = $(".lstoc");
+    if (tc) tc.style.top = (hd ? hd.offsetHeight : 0) + "px";
+    var reduceM = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    document.querySelectorAll("[data-go]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        var el = document.getElementById(b.getAttribute("data-go")); if (!el) return;
+        var off = (hd ? hd.offsetHeight : 0) + (tc ? tc.offsetHeight : 0) + 8;
+        window.scrollTo({ top: el.getBoundingClientRect().top + window.pageYOffset - off, behavior: reduceM ? "auto" : "smooth" });
+      });
+    });
     var swc = $("#selfWrite");
     if (swc) {
       swc.querySelectorAll("textarea[data-sw]").forEach(function (ta) {
