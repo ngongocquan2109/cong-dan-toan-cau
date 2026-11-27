@@ -4,7 +4,7 @@
   "use strict";
 
   /* ---------- Tiện ích ---------- */
-  var APP_VERSION = "v33"; // đổi cùng CACHE trong sw.js và ?v= trong index.html mỗi lần phát hành
+  var APP_VERSION = "v34"; // đổi cùng CACHE trong sw.js và ?v= trong index.html mỗi lần phát hành
   var KEY = "nrcdtc.v1";
   var INTERVALS = [0, 1, 3, 7, 14, 30]; // số ngày chờ theo "hộp" (spaced repetition)
   var $ = function (s, r) { return (r || document).querySelector(s); };
@@ -646,7 +646,7 @@
       '</p></div><a class="btn" href="#/placement">' + (S.placement ? "Làm lại" : "Bắt đầu") + "</a></div>";
     var tools = '<div class="card" style="margin-top:16px"><h3>Công cụ ôn luyện</h3><div class="actions" style="margin-top:10px">' +
       '<a class="btn small" href="#/grammar/mix/A1">Ôn tổng hợp A1</a><a class="btn small" href="#/grammar/mix/A2">Ôn tổng hợp A2</a><a class="btn small" href="#/grammar/mix/B1">Ôn tổng hợp B1</a><a class="btn small ghost" href="#/grammar/mix/all">Trộn tất cả</a>' +
-      '<a class="btn small ghost" href="#/book">Đối chiếu sách Murphy (115 unit)</a><a class="btn small ghost" href="#/appendix">Phụ lục tra cứu</a></div></div>';
+      '<a class="btn small" href="#/book">Ôn theo Unit sách</a><a class="btn small ghost" href="#/book">Đối chiếu sách Murphy (115 unit)</a><a class="btn small ghost" href="#/appendix">Phụ lục tra cứu</a></div></div>';
     var out = '<h1 style="margin-top:12px">Ngữ pháp</h1><p class="muted">Học theo bậc CEFR từ A1. Mỗi bài có lý thuyết, lỗi thường gặp và bài tập ba mức Dễ, Vừa, Khó. Qua 80% mỗi mức thì được 1 sao.</p>' + banner + tools;
     var cur = null;
     GR.forEach(function (t) {
@@ -1269,10 +1269,76 @@
     };
     cfg.cfg = cfg; startSession(cfg); return null;
   }
+  /* ---------- Ôn theo Unit sách (Phần S) ---------- */
+  function unitInfo(n) {
+    var R = (window.UNIT_REVIEW || {})[n], u = (window.BOOK_UNITS || []).filter(function (x) { return x[0] === n; })[0];
+    return R && u ? { R: R, u: u } : null;
+  }
+  function unitIds(n) { // mọi câu g: và mục DQ có tag thuộc unit
+    var info = unitInfo(n); if (!info) return [];
+    var tg = info.R.tags;
+    return Object.keys(Q).filter(function (id) { return tg.indexOf(Q[id].tag) >= 0; })
+      .concat(Object.keys(DQ).filter(function (id) { return tg.indexOf(DQ[id].tag) >= 0; }));
+  }
+  function isMcId(id) { return DQ[id] ? (DQ[id].type === "ccq" || DQ[id].type === "pairs") : Q[id].type !== "fill"; }
+  function unitStatus(n) { // [nhãn, lớp pill]
+    var r = S.topics["u:" + n]; if (!r) return ["Chưa học", "none"];
+    var t = today(), due = unitIds(n).filter(function (id) { return S.srs[id] && S.srs[id].due <= t; }).length;
+    if (due) return [due + " câu đến hạn", "warn"];
+    return [r.attempts ? "Đã học · ôn gần nhất " + r.last + "%" : "Đã học · chưa ôn", r.attempts && r.last >= 80 ? "good" : "none"];
+  }
+  function unitBuild(ids) { // 10–12 câu, tối đa một nửa là trắc nghiệm
+    var mc = shuffle(ids.filter(isMcId)), ot = shuffle(ids.filter(function (id) { return !isMcId(id); }));
+    var o = ot.slice(0, 12), m = mc.slice(0, Math.min(6, o.length));
+    var pick = o.concat(m), extra = mc.slice(m.length);
+    while (pick.length < Math.min(10, ids.length) && extra.length) pick.push(extra.shift());
+    return shuffle(pick);
+  }
+  var TL_LABEL = { experience: "Trải nghiệm", result: "Kết quả còn đến nay", span: "Kéo dài đến nay" };
+  function viewUnit(n) {
+    var info = unitInfo(n); if (!info) return viewNotFound();
+    var R = info.R, u = info.u, s = R.sum, t = GR.filter(function (x) { return x.id === u[2]; })[0], ids = unitIds(n);
+    var st = unitStatus(n), r = S.topics["u:" + n];
+    var say = function (en) { return '<button class="addrev" type="button" data-say="' + esc(en) + '">🔊 Nghe</button>'; };
+    return '<div class="lesson"><a class="back" href="#/book">← Đối chiếu sách</a><h1>Unit ' + n + ": " + esc(u[1]) + "</h1>" + pill(st) +
+      '<div class="card sec"><p class="eyebrow">Tóm tắt</p><ul class="unitpts">' + s.points.map(function (p) { return "<li>" + esc(p) + "</li>"; }).join("") + "</ul>" +
+      (s.timeline ? renderTimeline([{ kind: s.timeline, label: TL_LABEL[s.timeline], en: s.ex[0].en, vi: s.ex[0].vi }]) : "") + "</div>" +
+      '<div class="card sec"><p class="eyebrow">Ví dụ</p><ul class="ex">' + s.ex.map(function (e) { return "<li><div><b>" + esc(e.en) + "</b><span>" + esc(e.vi) + "</span></div>" + say(e.en) + "</li>"; }).join("") + "</ul></div>" +
+      '<div class="card sec"><p class="eyebrow">Lỗi hay gặp</p><p class="unitwrong">✗ ' + esc(s.mistake.wrong) + '</p><p class="unitright">✓ ' + esc(s.mistake.right) + '</p><p class="muted">' + esc(s.mistake.why) + "</p></div>" +
+      '<div class="card sec"><p class="muted">' + ids.length + " câu để ôn" + (r && r.attempts ? " · lần gần nhất " + r.last + "% · tốt nhất " + r.best + "% · " + r.attempts + " lượt" : "") + '</p><div class="actions">' +
+      (ids.length ? '<a class="btn" href="#/book/' + n + '/review">Ôn unit này</a>' : "") +
+      (t ? '<a class="btn ghost" href="#/grammar/' + t.id + '">Mở bài đầy đủ trong app</a>' : "") + "</div>" +
+      '<div class="actions" style="margin-top:10px"><button class="btn ghost" type="button" id="unitLearned" data-n="' + n + '">Tôi vừa học unit này trong sách</button></div>' +
+      '<p class="muted" style="margin-top:6px">Bấm sau khi học xong unit trong sách: các câu sẽ vào lịch ôn từ ngày mai.</p></div></div>';
+  }
+  function bindUnit() {
+    document.querySelectorAll("[data-say]").forEach(function (b) { b.addEventListener("click", function () { speak(b.getAttribute("data-say")); }); });
+    var b = $("#unitLearned"); if (!b) return;
+    b.addEventListener("click", function () {
+      var n = Number(b.getAttribute("data-n")), ids = unitIds(n), tm = addDays(today(), 1);
+      ids.forEach(function (id) {
+        var e = S.srs[id];
+        if (!e) S.srs[id] = { box: 0, due: tm, seen: 0, ok: 0 };
+        else if (e.due > tm) e.due = tm; // đã có lịch sớm hơn thì giữ nguyên
+      });
+      if (!S.topics["u:" + n]) S.topics["u:" + n] = { last: 0, best: 0, attempts: 0 };
+      save(); toast("Đã xếp " + ids.length + " câu của Unit " + n + " vào lịch ôn từ ngày mai."); route();
+    });
+  }
+  function viewUnitReview(n) {
+    var info = unitInfo(n), ids = unitIds(n); if (!info || !ids.length) return viewNotFound();
+    var cfg = {
+      title: "Unit " + n + " · " + info.u[1], exit: "#/book/" + n, nav: "grammar",
+      build: function () { return unitBuild(ids).map(function (id) { return mkQuestion(id); }); },
+      onFinish: function (pct) { var r = S.topics["u:" + n] || { best: 0, attempts: 0 }; S.topics["u:" + n] = { last: pct, best: Math.max(r.best, pct), attempts: r.attempts + 1 }; }
+    };
+    cfg.cfg = cfg; startSession(cfg); return null;
+  }
   function viewBook() {
     var rows = (window.BOOK_UNITS || []).map(function (u) {
       var t = GR.filter(function (x) { return x.id === u[2]; })[0]; if (!t) return "";
-      return '<a class="bookrow" href="#/grammar/' + t.id + '" data-q="' + esc((u[0] + " " + u[1] + " " + t.title).toLowerCase()) + '"><span class="bu">' + u[0] + '</span><span class="bt">' + esc(u[1]) + '</span><span class="bg">' + esc(t.title) + "</span>" + pill(gStatus(t)) + "</a>";
+      var hasU = !!unitInfo(u[0]);
+      return '<a class="bookrow" href="' + (hasU ? "#/book/" + u[0] : "#/grammar/" + t.id) + '" data-q="' + esc((u[0] + " " + u[1] + " " + t.title).toLowerCase()) + '"><span class="bu">' + u[0] + '</span><span class="bt">' + esc(u[1]) + '</span><span class="bg">' + esc(t.title) + "</span>" + pill(hasU ? unitStatus(u[0]) : gStatus(t)) + "</a>";
     }).join("");
     return '<div class="lesson"><a class="back" href="#/grammar">← Ngữ pháp</a><h1>Đối chiếu sách Murphy</h1><p class="muted">Sách <i>Essential Grammar in Use</i> (Elementary) có 115 unit. Bảng dưới cho biết mỗi unit được dạy ở bài nào trong app. Nội dung trong app được viết lại bằng tiếng Việt, theo cách học thống nhất của app.</p>' +
       '<input class="input" id="bookFilter" placeholder="Lọc: gõ số unit hoặc từ khóa (ví dụ 29, might, passive)…" style="margin:12px 0"><div class="card sec bookbox">' + rows + "</div></div>";
@@ -1685,7 +1751,11 @@
       if (!p[1]) html = viewVocabList();
       else if (p[2]) html = viewVocabSet(p[1], p[2], p[3]);
       else html = viewVocabTopic(p[1]);
-    } else if (sec === "book") { html = viewBook(); binder = bindBook; }
+    } else if (sec === "book") {
+      if (!p[1]) { html = viewBook(); binder = bindBook; }
+      else if (p[2] === "review") html = viewUnitReview(Number(p[1]));
+      else { html = viewUnit(Number(p[1])); binder = bindUnit; }
+    }
     else if (sec === "appendix") { html = viewAppendix(); binder = bindLesson; }
     else if (sec === "phrases") {
       if (!p[1]) html = viewPhraseList();

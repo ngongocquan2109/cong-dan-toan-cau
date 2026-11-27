@@ -108,7 +108,10 @@
         fl("q21", "h", "He ___ (not / eat) breakfast yesterday morning.", ["didn't eat", "did not eat"], "Phủ định quá khứ: didn't + eat.", "phu-dinh-qua-khu"),
         mc("q22", "h", "I ___ my keys yesterday, so I couldn't open the door.", ["lost", "lose", "losed"], "lost", "Lose là động từ bất quy tắc: lose – lost – lost.", "bat-quy-tac"),
         mc("q23", "h", "Where ___ you go last weekend?", ["did", "do", "were"], "did", "Last weekend là quá khứ; câu hỏi dùng did + go.", "cau-hoi-qua-khu"),
-        mc("q24", "h", "I met Lan two years ___.", ["ago", "before", "last"], "ago", "Two years ago là cách nói khoảng thời gian trước hiện tại.", "dau-hieu-qua-khu")
+        mc("q24", "h", "I met Lan two years ___.", ["ago", "before", "last"], "ago", "Two years ago là cách nói khoảng thời gian trước hiện tại.", "dau-hieu-qua-khu"),
+        mc("q25", "m", "___ you at work yesterday?", ["Were", "Was", "Did"], "Were", "Câu hỏi với to be quá khứ: đưa were lên trước you.", "to-be-qua-khu"),
+        fl("q26", "m", "My grandparents ___ (not / be) at home last Sunday.", ["weren't", "were not"], "Chủ ngữ số nhiều đi với were; phủ định là weren't.", "to-be-qua-khu"),
+        mc("q27", "h", "Was the hotel nice? — No, it ___.", ["wasn't", "didn't", "weren't"], "wasn't", "Trả lời ngắn nhắc lại was: No, it wasn't.", "to-be-qua-khu")
       ]
     },
 

@@ -490,3 +490,7 @@ select.pselect.wrong { border-color: var(--bad); background: rgba(214, 69, 69, .
 .tlhead { fill: var(--text); }
 .tlspan { stroke: var(--good); stroke-width: 8; stroke-linecap: round; }
 @media (max-width: 720px) { .tlwrap { grid-template-columns: 1fr; } }
+.unitpts { margin: 6px 0 0; padding-left: 20px; }
+.unitpts li { margin: 6px 0; }
+.unitwrong { color: #e07a7a; margin: 6px 0 2px; }
+.unitright { color: var(--lime2); margin: 2px 0 6px; font-weight: 600; }
