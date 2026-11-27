@@ -4,7 +4,7 @@
   "use strict";
 
   /* ---------- Tiện ích ---------- */
-  var APP_VERSION = "v27"; // đổi cùng CACHE trong sw.js và ?v= trong index.html mỗi lần phát hành
+  var APP_VERSION = "v28"; // đổi cùng CACHE trong sw.js và ?v= trong index.html mỗi lần phát hành
   var KEY = "nrcdtc.v1";
   var INTERVALS = [0, 1, 3, 7, 14, 30]; // số ngày chờ theo "hộp" (spaced repetition)
   var $ = function (s, r) { return (r || document).querySelector(s); };
@@ -26,10 +26,10 @@
     return a;
   };
   var norm = function (s) { return String(s).toLowerCase().replace(/[’‘]/g, "'").replace(/\s+/g, " ").trim(); };
-  // Ngày ghi nhận dạng yyyy-mm-dd (lưu trữ) -> dd-mm-yyyy, kèm giờ nếu có.
+  // Ngày ghi nhận dạng yyyy-mm-dd (lưu trữ) -> "HH:MM dd-mm-yyyy" (giờ đứng trước, nếu có).
   var fmtDT = function (at, time) {
     var p = String(at || "").split("-"), d = p.length === 3 ? p[2] + "-" + p[1] + "-" + p[0] : String(at || "");
-    return d + (time ? " lúc " + time : "");
+    return (time ? time + " " : "") + d;
   };
   var nowHM = function () { var n = new Date(); return pad(n.getHours()) + ":" + pad(n.getMinutes()); };
   var WD = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
