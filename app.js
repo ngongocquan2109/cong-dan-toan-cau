@@ -4,7 +4,7 @@
   "use strict";
 
   /* ---------- Tiện ích ---------- */
-  var APP_VERSION = "v32"; // đổi cùng CACHE trong sw.js và ?v= trong index.html mỗi lần phát hành
+  var APP_VERSION = "v32.1"; // đổi cùng CACHE trong sw.js và ?v= trong index.html mỗi lần phát hành
   var KEY = "nrcdtc.v1";
   var INTERVALS = [0, 1, 3, 7, 14, 30]; // số ngày chờ theo "hộp" (spaced repetition)
   var $ = function (s, r) { return (r || document).querySelector(s); };
@@ -839,8 +839,8 @@
       var w = it.w, fl = !!s.flip;
       var head = (w.pos ? '<span class="pill">' + esc(w.pos) + "</span>" : "") + (w.cefr ? '<span class="cefr small">' + w.cefr + "</span>" : "") + '<div class="word' + (w.phr ? " phr" : "") + '">' + esc(w.w) + '</div>' + (w.ipa ? '<div class="ipa">' + esc(w.ipa) + "</div>" : "") +
         '<button class="btn ghost small speak" data-act="speak" type="button">Nghe phát âm</button>';
-      var front = '<div class="card flash face front"' + (fl ? " inert" : "") + ">" + head + '<div class="rate"><button class="btn dark" data-act="flip" type="button">Lật thẻ</button></div></div>';
-      var back = '<div class="card flash face back"' + (fl ? "" : " inert") + ">" + head + '<div class="mean" style="margin-top:20px">' + esc(w.vi) + "</div>" + (w.ex ? '<p><b>' + esc(w.ex) + '</b></p><p class="muted">' + esc(w.exVi) + "</p>" : "") +
+      var front = '<div class="card flash face fc-front"' + (fl ? " inert" : "") + ">" + head + '<div class="rate"><button class="btn dark" data-act="flip" type="button">Lật thẻ</button></div></div>';
+      var back = '<div class="card flash face fc-back"' + (fl ? "" : " inert") + ">" + head + '<div class="mean" style="margin-top:20px">' + esc(w.vi) + "</div>" + (w.ex ? '<p><b>' + esc(w.ex) + '</b></p><p class="muted">' + esc(w.exVi) + "</p>" : "") +
         '<div class="rate"><button class="btn ghost" data-act="forgot" type="button">Chưa nhớ</button><button class="btn" data-act="remember" type="button">Đã nhớ</button></div><p class="swhint muted">Vuốt phải = Đã nhớ · vuốt trái = Chưa nhớ</p>' +
         (/^[vp]/.test(it.id) ? '<div style="margin-top:10px"><button class="link" data-act="addrev" type="button">+ Ôn tập: đưa từ này vào lịch ôn hôm nay</button></div>' : "") + "</div>";
       html = '<div class="fcwrap"><div class="fcinner' + (fl ? " flipped" : "") + '">' + front + back + "</div></div>";
@@ -903,7 +903,7 @@
     if (a === "flip") {
       s.flip = true; var fi = $(".fcinner");
       if (!fi) { renderSession(); return; }
-      fi.classList.add("flipped"); fi.querySelector(".front").setAttribute("inert", ""); var bk = fi.querySelector(".back"); bk.removeAttribute("inert");
+      fi.classList.add("flipped"); fi.querySelector(".fc-front").setAttribute("inert", ""); var bk = fi.querySelector(".fc-back"); bk.removeAttribute("inert");
       var rb = bk.querySelector('[data-act="remember"]'); if (rb) rb.focus({ preventScroll: true });
       return;
     }
