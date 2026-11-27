@@ -1,7 +1,7 @@
 /* Service worker: lưu file app để dùng được khi mất mạng. */
-const CACHE = "nrcdtc-v32.1";
+const CACHE = "nrcdtc-v33";
 const FILES = [
-  "./", "index.html", "styles.css", "app.js", "sync.js", "manifest.webmanifest", "icon.svg",
+  "./", "index.html", "styles.css", "app.js", "sync.js", "norm.js", "manifest.webmanifest", "icon.svg",
   "icons/avatar-160.png", "icons/favicon-32.png", "icons/icon-192.png", "icons/icon-512.png", "icons/icon-maskable-512.png", "icons/apple-touch-icon.png",
   "data/grammar-to-be.js",
   "data/grammar-present-simple.js",
@@ -22,6 +22,7 @@ const FILES = [
   "data/grammar-passive.js",
   "data/grammar-plus.js",
   "data/grammar-explain.js",
+  "data/grammar-practice.js",
   "data/grammar-more1.js",
   "data/grammar-more2.js",
   "data/grammar-more3.js",
