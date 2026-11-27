@@ -4,7 +4,7 @@
   "use strict";
 
   /* ---------- Tiện ích ---------- */
-  var APP_VERSION = "v31"; // đổi cùng CACHE trong sw.js và ?v= trong index.html mỗi lần phát hành
+  var APP_VERSION = "v32"; // đổi cùng CACHE trong sw.js và ?v= trong index.html mỗi lần phát hành
   var KEY = "nrcdtc.v1";
   var INTERVALS = [0, 1, 3, 7, 14, 30]; // số ngày chờ theo "hộp" (spaced repetition)
   var $ = function (s, r) { return (r || document).querySelector(s); };
@@ -76,7 +76,7 @@
 
   /* ---------- Trạng thái lưu trữ ---------- */
   function defaults() {
-    return { version: 1, goal: 10, theme: null, voice: null, xp: 0, days: {}, srs: {}, errors: {}, topics: {}, reports: [], badges: {}, lvl: {}, deck: {}, notes: "", selfwrite: {}, resetAt: "", updatedAt: 0 };
+    return { version: 1, goal: 10, sound: true, theme: null, voice: null, xp: 0, days: {}, srs: {}, errors: {}, topics: {}, reports: [], badges: {}, lvl: {}, deck: {}, notes: "", selfwrite: {}, resetAt: "", updatedAt: 0 };
   }
   function load() {
     try { var r = JSON.parse(localStorage.getItem(KEY)); return Object.assign(defaults(), r || {}); }
@@ -770,6 +770,29 @@
 
   /* ---------- Phiên làm bài (câu hỏi + thẻ từ) ---------- */
   var SESS = null;
+  function reduced() { return !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches); }
+  var AC = null;
+  function sfx(kind) { // âm thanh tạo bằng Web Audio, không cần file; im lặng khi S.sound === false
+    if (S.sound === false) return;
+    try {
+      var C = window.AudioContext || window.webkitAudioContext; if (!C) return;
+      AC = AC || new C(); if (AC.state === "suspended") AC.resume();
+      var t = AC.currentTime;
+      var tone = function (f, t0, d, type, vol, f2) {
+        var o = AC.createOscillator(), g = AC.createGain();
+        o.type = type; o.frequency.setValueAtTime(f, t0); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t0 + d);
+        g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol, t0 + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
+        o.connect(g); g.connect(AC.destination); o.start(t0); o.stop(t0 + d + 0.03);
+      };
+      if (kind === "ok") { tone(880, t, 0.16, "sine", 0.16); tone(1318.5, t + 0.08, 0.26, "sine", 0.14); }
+      else if (kind === "bad") { tone(190, t, 0.28, "triangle", 0.2, 105); }
+      else if (kind === "combo") { tone(784, t, 0.12, "sine", 0.15); tone(988, t + 0.08, 0.12, "sine", 0.15); tone(1318.5, t + 0.16, 0.3, "sine", 0.15); }
+      else if (kind === "win") { [523.3, 659.3, 784, 1046.5].forEach(function (f, i) { tone(f, t + i * 0.1, 0.3, "sine", 0.14); }); }
+    } catch (e) { /* trình duyệt không hỗ trợ: bỏ qua */ }
+  }
+  function comboBadge(s) {
+    return s.combo >= 3 ? '<span class="combo' + (s.comboPop ? " pop" : "") + '">Combo ×' + s.combo + "</span>" : "";
+  }
   function mkQuestion(id) {
     var q = Q[id];
     return { kind: q.type === "fill" ? "fill" : "mc", id: id, q: q.q, options: q.options ? shuffle(q.options) : null, answer: q.answer, answers: q.answers, explain: q.explain, tag: q.tag, vi: (GE[id.slice(2)] || [])[0] || q.vi, deep: (GE[id.slice(2)] || [])[1] || q.deep };
@@ -794,7 +817,7 @@
     });
   }
   function startSession(cfg) {
-    SESS = Object.assign({ chosen: [], i: 0, ok: 0, bad: 0, rem: 0, forgot: 0, answered: false, picked: null, flip: false, wrong: [], xp0: S.xp, byTopic: {}, grp: {} }, cfg);
+    SESS = Object.assign({ chosen: [], i: 0, ok: 0, bad: 0, rem: 0, forgot: 0, combo: 0, maxCombo: 0, answered: false, picked: null, flip: false, wrong: [], xp0: S.xp, byTopic: {}, grp: {} }, cfg);
     SESS.items = cfg.build();
     document.body.classList.add("insession");
     renderSession();
@@ -803,9 +826,9 @@
     var s = SESS, total = s.items.length;
     if (s.progress) {
       var pg = s.progress(s);
-      return '<div class="sbar"><a class="back" href="' + s.exit + '" style="margin:0">✕ Thoát</a><div class="bar"><i style="width:' + pg.pct + '%"></i></div><span class="muted">' + esc(pg.text) + "</span></div>";
+      return '<div class="sbar"><a class="back" href="' + s.exit + '" style="margin:0">✕ Thoát</a><div class="bar"><i style="width:' + pg.pct + '%"></i></div><span class="muted">' + esc(pg.text) + "</span>" + comboBadge(s) + "</div>";
     }
-    return '<div class="sbar"><a class="back" href="' + s.exit + '" style="margin:0">✕ Thoát</a><div class="bar"><i style="width:' + Math.round((s.i + (s.answered ? 1 : 0)) / total * 100) + '%"></i></div><span class="muted">' + Math.min(s.i + 1, total) + "/" + total + "</span></div>";
+    return '<div class="sbar"><a class="back" href="' + s.exit + '" style="margin:0">✕ Thoát</a><div class="bar"><i style="width:' + Math.round((s.i + (s.answered ? 1 : 0)) / total * 100) + '%"></i></div><span class="muted">' + Math.min(s.i + 1, total) + "/" + total + "</span>" + comboBadge(s) + "</div>";
   }
   function renderSession() {
     var s = SESS, view = $("#view");
@@ -813,13 +836,14 @@
     if (s.i >= s.items.length) { finishSession(); return; }
     var it = s.items[s.i], html = "";
     if (it.kind === "card") {
-      var w = it.w;
-      html = '<div class="card flash">' + (w.pos ? '<span class="pill">' + esc(w.pos) + "</span>" : "") + (w.cefr ? '<span class="cefr small">' + w.cefr + "</span>" : "") + '<div class="word' + (w.phr ? " phr" : "") + '">' + esc(w.w) + '</div>' + (w.ipa ? '<div class="ipa">' + esc(w.ipa) + "</div>" : "") +
-        '<button class="btn ghost small speak" data-act="speak" type="button">Nghe phát âm</button>' +
-        (s.flip ? '<div class="mean" style="margin-top:20px">' + esc(w.vi) + "</div>" + (w.ex ? '<p><b>' + esc(w.ex) + '</b></p><p class="muted">' + esc(w.exVi) + "</p>" : "") +
-                   '<div class="rate"><button class="btn ghost" data-act="forgot" type="button">Chưa nhớ</button><button class="btn" data-act="remember" type="button">Đã nhớ</button></div>' +
-                   (/^[vp]/.test(it.id) ? '<div style="margin-top:10px"><button class="link" data-act="addrev" type="button">+ Ôn tập: đưa từ này vào lịch ôn hôm nay</button></div>' : "")
-                 : '<div class="rate"><button class="btn dark" data-act="flip" type="button">Lật thẻ</button></div>') + "</div>";
+      var w = it.w, fl = !!s.flip;
+      var head = (w.pos ? '<span class="pill">' + esc(w.pos) + "</span>" : "") + (w.cefr ? '<span class="cefr small">' + w.cefr + "</span>" : "") + '<div class="word' + (w.phr ? " phr" : "") + '">' + esc(w.w) + '</div>' + (w.ipa ? '<div class="ipa">' + esc(w.ipa) + "</div>" : "") +
+        '<button class="btn ghost small speak" data-act="speak" type="button">Nghe phát âm</button>';
+      var front = '<div class="card flash face front"' + (fl ? " inert" : "") + ">" + head + '<div class="rate"><button class="btn dark" data-act="flip" type="button">Lật thẻ</button></div></div>';
+      var back = '<div class="card flash face back"' + (fl ? "" : " inert") + ">" + head + '<div class="mean" style="margin-top:20px">' + esc(w.vi) + "</div>" + (w.ex ? '<p><b>' + esc(w.ex) + '</b></p><p class="muted">' + esc(w.exVi) + "</p>" : "") +
+        '<div class="rate"><button class="btn ghost" data-act="forgot" type="button">Chưa nhớ</button><button class="btn" data-act="remember" type="button">Đã nhớ</button></div><p class="swhint muted">Vuốt phải = Đã nhớ · vuốt trái = Chưa nhớ</p>' +
+        (/^[vp]/.test(it.id) ? '<div style="margin-top:10px"><button class="link" data-act="addrev" type="button">+ Ôn tập: đưa từ này vào lịch ôn hôm nay</button></div>' : "") + "</div>";
+      html = '<div class="fcwrap"><div class="fcinner' + (fl ? " flipped" : "") + '">' + front + back + "</div></div>";
     } else if (it.kind === "order") {
       var tok = function (act, i) { return '<button class="tok" type="button" data-act="' + act + '" data-i="' + i + '"' + (s.answered ? " disabled" : "") + ">" + esc(it.words[i]) + "</button>"; };
       html = '<div class="card"><p class="eyebrow">Sắp xếp các từ thành câu đúng</p><div class="q">' + esc(it.q) + "</div>" +
@@ -859,6 +883,16 @@
       b.addEventListener("click", function () { act(b.getAttribute("data-act"), b); });
     });
     if (s.answered) { var nb = view.querySelector('[data-act="next"]'); if (nb) nb.focus(); }
+    if (it.kind === "card") bindSwipe(view.querySelector(".fcwrap"));
+    if (s.fx) { // hiệu ứng đúng/sai: chỉ chạy một lần sau khi trả lời, tắt khi giảm chuyển động
+      var fx = s.fx, fxXp = s.fxXp; s.fx = null; s.fxXp = 0; s.comboPop = false;
+      var cd = view.querySelector(".session > .card");
+      if (cd && !reduced()) {
+        cd.classList.add("fxcard", fx);
+        cd.addEventListener("animationend", function (e) { if (e.target === cd) cd.classList.remove(fx); });
+        if (fx === "pop" && fxXp > 0) { var fl2 = document.createElement("span"); fl2.className = "xpfloat"; fl2.textContent = "+" + fxXp + " XP"; cd.appendChild(fl2); setTimeout(function () { if (fl2.parentNode) fl2.parentNode.removeChild(fl2); }, 1100); }
+      }
+    }
     if ((it.kind === "dict" || it.audio) && !s.answered && s.spoken !== s.i) { s.spoken = s.i; setTimeout(function () { speak(it.w.w); }, 200); }
   }
   function act(a, el) {
@@ -866,7 +900,13 @@
     var it = s.items[s.i];
     if (a === "speak") { speak(it.w.w); return; }
     if (a === "addrev") { forceReview(it.id); toast("Đã đưa từ này vào lịch ôn hôm nay."); renderNav(s.nav); return; }
-    if (a === "flip") { s.flip = true; renderSession(); return; }
+    if (a === "flip") {
+      s.flip = true; var fi = $(".fcinner");
+      if (!fi) { renderSession(); return; }
+      fi.classList.add("flipped"); fi.querySelector(".front").setAttribute("inert", ""); var bk = fi.querySelector(".back"); bk.removeAttribute("inert");
+      var rb = bk.querySelector('[data-act="remember"]'); if (rb) rb.focus({ preventScroll: true });
+      return;
+    }
     if (a === "remember" || a === "forgot") {
       var ok = a === "remember"; recordCard(it.id, ok); if (ok) s.rem++; else s.forgot++;
       s.i++; s.flip = false; renderSession(); return;
@@ -893,14 +933,77 @@
       S.reports.push({ id: it.id, at: new Date().toISOString() }); save(); toast("Đã ghi nhận câu này để kiểm tra lại.");
     }
   }
+  function bindSwipe(wrap) { // sau khi lật: vuốt phải = Đã nhớ, vuốt trái = Chưa nhớ (nút bấm vẫn dùng được)
+    if (!wrap) return;
+    var x0 = null, y0 = 0, dx = 0, drag = false, pid = null;
+    wrap.addEventListener("pointerdown", function (e) {
+      if (!SESS || !SESS.flip || SESS.swiping || (e.pointerType === "mouse" && e.button !== 0)) return;
+      x0 = e.clientX; y0 = e.clientY; dx = 0; drag = false; pid = e.pointerId;
+    });
+    wrap.addEventListener("pointermove", function (e) {
+      if (x0 === null || e.pointerId !== pid) return;
+      var mx = e.clientX - x0, my = e.clientY - y0;
+      if (!drag) {
+        if (Math.abs(mx) > 10 && Math.abs(mx) > Math.abs(my) * 1.2) { drag = true; try { wrap.setPointerCapture(pid); } catch (_) { /* bỏ qua */ } wrap.classList.add("dragging"); }
+        else { if (Math.abs(my) > 10) x0 = null; return; }
+      }
+      dx = mx; wrap.style.transform = "translateX(" + dx + "px) rotate(" + (dx / 25) + "deg)";
+      wrap.classList.toggle("sw-r", dx >= 40); wrap.classList.toggle("sw-l", dx <= -40);
+    });
+    var end = function (e) {
+      if (x0 === null || e.pointerId !== pid) return;
+      var was = drag; x0 = null; if (!was) return;
+      wrap.classList.remove("dragging");
+      if (Math.abs(dx) >= 80) {
+        var dir = dx > 0, s0 = SESS; s0.swiping = true;
+        var fin = function () { s0.swiping = false; if (SESS === s0) act(dir ? "remember" : "forgot"); };
+        if (reduced()) { fin(); return; }
+        wrap.style.transition = "transform .25s ease, opacity .25s ease";
+        wrap.style.transform = "translateX(" + (dir ? 1 : -1) * window.innerWidth + "px) rotate(" + (dir ? 25 : -25) + "deg)"; wrap.style.opacity = "0";
+        setTimeout(fin, 250);
+      } else { wrap.style.transform = ""; wrap.classList.remove("sw-r", "sw-l"); }
+    };
+    wrap.addEventListener("pointerup", end); wrap.addEventListener("pointercancel", end);
+  }
   function finishAnswer(it) {
-    var s = SESS;
+    var s = SESS, xpb = S.xp;
     if (it.plain) { var dd = day(today()); dd.done++; if (s.lastOk) { dd.correct++; S.xp += 10; } else dd.wrong++; checkBadges(); save(); }
     else if (!it.noRecord) recordAnswer(it.id, s.lastOk, it.tag);
     if (it.grp) { var gg = s.grp[it.grp] || (s.grp[it.grp] = { ok: 0, n: 0 }); gg.n++; if (s.lastOk) gg.ok++; }
     if (s.lastOk) s.ok++; else { s.bad++; s.wrong.push({ q: it.q, a: it.answer }); }
+    if (s.lastOk) { s.combo++; if (s.combo > s.maxCombo) s.maxCombo = s.combo; s.comboPop = s.combo === 3 || s.combo === 5 || s.combo === 10; } else { s.combo = 0; s.comboPop = false; }
+    s.fx = s.lastOk ? "pop" : "shake"; s.fxXp = S.xp - xpb;
+    sfx(s.lastOk ? (s.comboPop ? "combo" : "ok") : "bad");
     if (it.topic) { var b = s.byTopic[it.topic] || (s.byTopic[it.topic] = { ok: 0, n: 0 }); b.n++; if (s.lastOk) b.ok++; }
     renderSession();
+  }
+  function animateResult(pct, total) {
+    if (!total) return;
+    if (pct >= 80) sfx("win");
+    var fg = $(".rfg"), num = $("#ringN"), off = 326.73 * (1 - pct / 100);
+    if (reduced()) { if (fg) fg.style.strokeDashoffset = off; return; }
+    if (num) num.textContent = "0";
+    setTimeout(function () { if (fg) fg.style.strokeDashoffset = off; }, 40); // dùng timer thay rAF để chạy cả khi tab bị giảm tốc
+    var t0 = Date.now(), iv = setInterval(function () {
+      var k = Math.min(1, (Date.now() - t0) / 800), n = $("#ringN");
+      if (!n) { clearInterval(iv); return; }
+      n.textContent = Math.round(pct * (1 - Math.pow(1 - k, 3)));
+      if (k >= 1) clearInterval(iv);
+    }, 30);
+    if (pct >= 80) confetti();
+  }
+  function confetti() { // pháo giấy nhẹ trên canvas, tự gỡ sau 1,5 giây
+    var cv = document.createElement("canvas"), dpr = window.devicePixelRatio || 1, W = window.innerWidth, H = window.innerHeight;
+    cv.className = "confetti"; cv.width = W * dpr; cv.height = H * dpr; cv.setAttribute("aria-hidden", "true");
+    var g = cv.getContext("2d"); if (!g) return; g.scale(dpr, dpr); document.body.appendChild(cv);
+    var cols = ["#2f6fed", "#2f9e5b", "#e0a93a", "#ef6b6b", "#9b6bef"], ps = [], i;
+    for (i = 0; i < 44; i++) ps.push({ x: W / 2 + (Math.random() - .5) * 80, y: H * 0.35, vx: (Math.random() - .5) * 11, vy: -Math.random() * 9 - 3, r: Math.random() * 6 + 4, a: Math.random() * 6, va: (Math.random() - .5) * .4, c: cols[i % cols.length] });
+    var t0 = Date.now(), iv = setInterval(function () {
+      var el = Date.now() - t0;
+      if (el >= 1500) { clearInterval(iv); if (cv.parentNode) cv.parentNode.removeChild(cv); return; }
+      g.clearRect(0, 0, W, H); g.globalAlpha = Math.min(1, (1500 - el) / 500);
+      ps.forEach(function (p) { p.vy += .35; p.x += p.vx; p.y += p.vy; p.a += p.va; g.save(); g.translate(p.x, p.y); g.rotate(p.a); g.fillStyle = p.c; g.fillRect(-p.r / 2, -p.r / 4, p.r, p.r / 2); g.restore(); });
+    }, 16);
   }
   function finishSession() {
     document.body.classList.remove("insession");
@@ -910,13 +1013,14 @@
     checkBadges(); save();
     var gained = S.xp - s.xp0;
     var html = '<div class="session"><div class="card result"><p class="eyebrow">Hoàn thành</p><h1>' + esc(s.title) + "</h1>" +
-      (total ? '<div class="big">' + pct + '%<small> · ' + s.ok + "/" + total + " câu đúng</small></div>" : "") +
+      (total ? '<div class="ringbox"><svg class="ring" viewBox="0 0 120 120" aria-hidden="true"><circle class="rbg" cx="60" cy="60" r="52"/><circle class="rfg' + (pct >= 80 ? " win" : "") + '" cx="60" cy="60" r="52" stroke-dasharray="326.73" stroke-dashoffset="326.73" transform="rotate(-90 60 60)"/></svg><div class="ringnum"><span id="ringN">' + pct + '</span>%</div>' + (pct >= 80 ? '<span class="starfly" aria-hidden="true">★</span>' : "") + '</div><p class="muted" style="text-align:center">' + s.ok + "/" + total + " câu đúng" + (s.maxCombo >= 2 ? " · chuỗi đúng dài nhất ×" + s.maxCombo : "") + "</p>" : "") +
       (s.rem + s.forgot ? '<p class="muted">Thẻ từ: ' + s.rem + " đã nhớ, " + s.forgot + " chưa nhớ</p>" : "") +
       '<p class="muted">+' + gained + " XP · streak " + streak() + " ngày</p>" + (s.extra ? s.extra(s) : "") +
       (s.wrong.length ? '<h3 style="margin-top:18px">Cần xem lại</h3><ul class="wronglist">' + s.wrong.map(function (x) { return "<li>" + esc(x.q) + " → <b>" + esc(x.a) + "</b></li>"; }).join("") + "</ul>" : "") +
       '<div class="actions"><button class="btn" data-act="again" type="button">Làm lại</button><a class="btn ghost" href="' + s.exit + '">Quay lại danh sách</a><a class="btn ghost" href="#/">Tổng quan</a></div></div></div>';
     $("#view").innerHTML = html;
     var ag = $('[data-act="again"]'); if (ag) ag.addEventListener("click", function () { startSession(s.cfg); });
+    animateResult(pct, total);
     renderNav(s.nav);
   }
 
@@ -1321,6 +1425,8 @@
         '<div class="field"><span>Số mục mỗi ngày</span><input class="input" id="goalIn" type="number" min="3" max="100" value="' + S.goal + '"></div></div>' +
       '<div class="card"><h2>Giao diện</h2><div class="field"><span>Chế độ</span><div class="seg"><button data-theme="light" class="' + (th === "light" ? "on" : "") + '" type="button">Sáng</button><button data-theme="dark" class="' + (th === "dark" ? "on" : "") + '" type="button">Tối</button></div></div>' +
         '<p class="muted" style="margin-top:8px">Mặc định theo cài đặt của thiết bị; khi Ngài tự chọn, app sẽ nhớ.</p></div>' +
+      '<div class="card"><h2>Âm thanh</h2><div class="field"><span>Âm thanh khi trả lời</span><div class="seg"><button data-sound="1" class="' + (S.sound !== false ? "on" : "") + '" type="button">Bật</button><button data-sound="0" class="' + (S.sound === false ? "on" : "") + '" type="button">Tắt</button></div></div>' +
+        '<p class="muted" style="margin-top:8px">Tiếng “ting” khi đúng, “bụp” khi sai.</p></div>' +
       '<div class="card" id="syncBox"></div>' +
       '<div class="card"><h2>Sao lưu tiến độ</h2><p class="muted">Xuất file để lưu một bản dự phòng ngoài đám mây, hoặc chuyển sang máy khác khi chưa bật đồng bộ.</p>' +
         '<div class="actions"><button class="btn" id="exp" type="button">Xuất file sao lưu</button><label class="btn ghost" style="cursor:pointer">Nhập file<input id="imp" type="file" accept="application/json" hidden></label></div></div>' +
@@ -1378,6 +1484,7 @@
     $("#goalIn").addEventListener("change", function (e) {
       var v = Math.max(3, Math.min(100, parseInt(e.target.value, 10) || 10)); S.goal = v; e.target.value = v; save(); toast("Đã đặt mục tiêu " + v + " mục mỗi ngày.");
     });
+    document.querySelectorAll("button[data-sound]").forEach(function (b) { b.addEventListener("click", function () { S.sound = b.getAttribute("data-sound") === "1"; save(); if (S.sound) sfx("ok"); route(); }); });
     document.querySelectorAll("button[data-theme]").forEach(function (b) { b.addEventListener("click", function () { setTheme(b.getAttribute("data-theme")); route(); }); });
     // Danh sách giọng trên điện thoại thường nạp chậm hoặc báo nhiều lần. Chỉ vẽ lại khi danh sách thật sự đổi.
     // Dùng danh sách bấm trực tiếp thay cho ô chọn gốc: bấm là chọn và đọc thử ngay, có phản hồi trên mọi trình duyệt.

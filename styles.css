@@ -365,7 +365,7 @@ body.zen main { padding-bottom: 80px; }
   .prow { grid-template-columns: 112px 1fr 44px; }
   .prow .bar { grid-column: 1 / 4; }
 }
-@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
 
 .check span b { display: block; font-weight: 700; }
 .check span small { display: block; margin-top: 3px; color: var(--muted); font-size: 14px; line-height: 1.5; }
@@ -424,3 +424,37 @@ body.zen main { padding-bottom: 80px; }
 .cmprow { padding: 12px 14px; border-radius: 16px; background: var(--chip); }
 .cmpa, .cmpb { display: flex; gap: 8px; align-items: baseline; margin-bottom: 4px; }
 .cmprow p { margin: 6px 0 0; }
+
+/* ---------- V1: phản hồi đúng/sai ---------- */
+.fxcard { position: relative; }
+.fxcard.pop { animation: pop .26s ease-out; }
+.fxcard.shake { animation: shake .3s ease-in-out; }
+@keyframes pop { 0% { transform: scale(1); } 45% { transform: scale(1.03); } 100% { transform: scale(1); } }
+@keyframes shake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-9px); } 40% { transform: translateX(8px); } 60% { transform: translateX(-6px); } 80% { transform: translateX(4px); } }
+.xpfloat { position: absolute; right: 18px; top: 14px; font-weight: 700; color: var(--good); pointer-events: none; animation: floatUp 1s ease-out forwards; }
+@keyframes floatUp { 0% { opacity: 0; transform: translateY(8px); } 20% { opacity: 1; } 100% { opacity: 0; transform: translateY(-34px); } }
+/* ---------- V2: combo ---------- */
+.combo { font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: rgba(224, 169, 58, .2); color: var(--warn); white-space: nowrap; }
+.combo.pop { animation: pop .35s ease-out; }
+/* ---------- V1b: thẻ lật 3D và vuốt ---------- */
+.fcwrap { perspective: 1200px; touch-action: pan-y; transition: transform .2s ease; }
+.fcwrap.dragging { transition: none; cursor: grabbing; }
+.fcinner { display: grid; transform-style: preserve-3d; transition: transform .5s cubic-bezier(.3, .7, .3, 1); }
+.fcinner.flipped { transform: rotateY(180deg); }
+.fcinner .face { grid-area: 1 / 1; backface-visibility: hidden; -webkit-backface-visibility: hidden; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.fcinner .back { transform: rotateY(180deg); }
+.fcwrap.sw-r .face { box-shadow: 0 0 0 3px var(--good); }
+.fcwrap.sw-l .face { box-shadow: 0 0 0 3px var(--bad); }
+.swhint { font-size: 12px; margin: 10px 0 0; display: none; }
+@media (hover: none) { .swhint { display: block; } }
+/* ---------- V3: màn kết quả ---------- */
+.ringbox { position: relative; width: 150px; height: 150px; margin: 10px auto 4px; }
+.ring { width: 100%; height: 100%; }
+.ring circle { fill: none; stroke-width: 9; }
+.ring .rbg { stroke: var(--chip); }
+.ring .rfg { stroke: var(--accent, #2f6fed); stroke-linecap: round; transition: stroke-dashoffset .8s cubic-bezier(.3, .7, .3, 1); }
+.ring .rfg.win { stroke: var(--good); }
+.ringnum { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 38px; font-weight: 600; letter-spacing: -.03em; }
+.starfly { position: absolute; right: -6px; top: -6px; font-size: 34px; color: var(--warn); animation: starIn .7s .5s cubic-bezier(.3, 1.5, .5, 1) backwards; }
+@keyframes starIn { 0% { opacity: 0; transform: translate(-60px, 40px) scale(.2) rotate(-90deg); } 100% { opacity: 1; transform: none; } }
+.confetti { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 9999; }
