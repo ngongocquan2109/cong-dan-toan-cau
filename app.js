@@ -4,7 +4,7 @@
   "use strict";
 
   /* ---------- Tiện ích ---------- */
-  var APP_VERSION = "v35"; // đổi cùng CACHE trong sw.js và ?v= trong index.html mỗi lần phát hành
+  var APP_VERSION = "v36"; // đổi cùng CACHE trong sw.js và ?v= trong index.html mỗi lần phát hành
   var KEY = "nrcdtc.v1";
   var INTERVALS = [0, 1, 3, 7, 14, 30]; // số ngày chờ theo "hộp" (spaced repetition)
   var $ = function (s, r) { return (r || document).querySelector(s); };
@@ -655,6 +655,63 @@
     });
   }
 
+  /* ---------- Bản đồ lộ trình (V4) ---------- */
+  var gView = "list"; // "list" | "map": chỉ giữ trong bộ nhớ, không lưu vào S
+  function pmWrap(s, n) { // ngắt tối đa 2 dòng, quá dài thì thêm "…"
+    var w = String(s).split(/\s+/), lines = [""], i;
+    for (i = 0; i < w.length; i++) {
+      var cur = lines[lines.length - 1], tryL = cur ? cur + " " + w[i] : w[i];
+      if (tryL.length <= n || !cur) lines[lines.length - 1] = tryL;
+      else if (lines.length < 2) lines.push(w[i]);
+      else { lines[1] = (lines[1] + " " + w.slice(i).join(" ")); break; }
+    }
+    if (lines[1] && lines[1].length > n) lines[1] = lines[1].slice(0, Math.max(1, n - 1)).replace(/\s+$/, "") + "…";
+    if (lines[0].length > n) lines[0] = lines[0].slice(0, n - 1) + "…";
+    return lines;
+  }
+  function pathMap() {
+    var W = 360, STEP = 88, nx = nextGrammar(), y = 12, cur = null, pts = [], bands = [];
+    GR.forEach(function (t, k) {
+      if (t.cefr !== cur) { cur = t.cefr; bands.push({ y: y, cefr: cur }); y += 46; }
+      pts.push({ t: t, k: k, x: Math.round(180 + 92 * Math.sin(k * 0.95)), y: y + 24 });
+      y += STEP;
+    });
+    var H = y + 8, d = "";
+    pts.forEach(function (p, i) {
+      if (!i) { d += "M" + p.x + " " + p.y; return; }
+      var q = pts[i - 1], m = (p.y - q.y) / 2;
+      d += " C" + q.x + " " + (q.y + m) + " " + p.x + " " + (p.y - m) + " " + p.x + " " + p.y;
+    });
+    var svg = '<svg class="pmsvg" viewBox="0 0 ' + W + " " + H + '" role="group" aria-label="Bản đồ lộ trình ngữ pháp"><path class="pmpath" d="' + d + '"/>';
+    bands.forEach(function (b) {
+      var all = GR.filter(function (x) { return x.cefr === b.cefr; });
+      svg += '<g class="pmband"><rect x="50" y="' + b.y + '" width="260" height="30" rx="15"/><text x="180" y="' + (b.y + 20) + '" text-anchor="middle">' +
+        b.cefr + " · " + esc(CEFR_NAME[b.cefr] || "") + " · " + all.filter(gDone).length + "/" + all.length + "</text></g>";
+    });
+    pts.forEach(function (p) {
+      var t = p.t, st = gStatus(t), n = stars(t), isNext = !!(nx && nx.id === t.id), right = p.x < 180;
+      var avail = right ? W - (p.x + 32) - 4 : p.x - 32 - 4, lines = pmWrap(t.title, Math.max(8, Math.floor(avail / 6.6)));
+      var sub = isNext ? "Bài tiếp theo" : st[0], ly = p.y - lines.length * 7.5 + 2;
+      var label = n ? "★" + n : st[1] === "good" ? "✓" : String(p.k + 1);
+      svg += '<a class="pmnode st-' + st[1] + (isNext ? " next" : "") + '" href="#/grammar/' + esc(t.id) + '" aria-label="' + esc(t.title) + ", " + st[0] + ", " + n + ' trên 3 sao">' +
+        '<title>' + esc(t.title) + "</title>" + (isNext ? '<circle class="pmring" cx="' + p.x + '" cy="' + p.y + '" r="30"/>' : "") +
+        '<circle class="pmdot" cx="' + p.x + '" cy="' + p.y + '" r="23"/><text class="pmnum" x="' + p.x + '" y="' + (p.y + 5) + '" text-anchor="middle">' + label + "</text>" +
+        '<text class="pmlbl" x="' + (right ? p.x + 32 : p.x - 32) + '" text-anchor="' + (right ? "start" : "end") + '">' +
+        lines.map(function (ln, i) { return '<tspan x="' + (right ? p.x + 32 : p.x - 32) + '" y="' + (ly + i * 15) + '">' + esc(ln) + "</tspan>"; }).join("") +
+        '<tspan class="pmsub" x="' + (right ? p.x + 32 : p.x - 32) + '" y="' + (ly + lines.length * 15) + '">' + esc(sub) + "</tspan></text></a>";
+    });
+    return '<div class="card pmap"><div class="pmlegend"><span><i class="lg none"></i>Chưa học</span><span><i class="lg warn"></i>Đang yếu</span><span><i class="lg good"></i>Vững</span><span>★ = số sao</span></div>' + svg + "</svg></div>";
+  }
+  function bindGrammarList() {
+    document.querySelectorAll("[data-gv]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        var v = b.getAttribute("data-gv"); if (v === gView) return;
+        gView = v; $("#view").innerHTML = viewGrammarList(); bindGrammarList();
+        var t = $("#gvtog"); if (t) t.scrollIntoView({ block: "start" });
+      });
+    });
+  }
+
   /* ---------- Màn hình: Ngữ pháp ---------- */
   function viewGrammarList() {
     var banner = '<div class="card" style="margin-top:16px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><div><h3>Kiểm tra đầu vào</h3><p class="muted">' +
@@ -665,6 +722,10 @@
       '<a class="btn small" href="#/grammar/mix/A1">Ôn tổng hợp A1</a><a class="btn small" href="#/grammar/mix/A2">Ôn tổng hợp A2</a><a class="btn small" href="#/grammar/mix/B1">Ôn tổng hợp B1</a><a class="btn small ghost" href="#/grammar/mix/all">Trộn tất cả</a>' +
       '<a class="btn small ghost" href="#/book">Đối chiếu sách Murphy (115 unit)</a><a class="btn small ghost" href="#/appendix">Phụ lục tra cứu</a></div></div>';
     var out = '<h1 style="margin-top:12px">Ngữ pháp</h1><p class="muted">Học theo bậc CEFR từ A1. Mỗi bài có lý thuyết, lỗi thường gặp và bài tập ba mức Dễ, Vừa, Khó. Qua 80% mỗi mức thì được 1 sao.</p>' + banner + tools;
+    out += '<div class="gvtog" id="gvtog"><div class="seg" role="group" aria-label="Kiểu hiển thị">' +
+      '<button type="button" data-gv="map" aria-pressed="' + (gView === "map") + '" class="' + (gView === "map" ? "on" : "") + '">Bản đồ</button>' +
+      '<button type="button" data-gv="list" aria-pressed="' + (gView === "list") + '" class="' + (gView === "list" ? "on" : "") + '">Danh sách</button></div></div>';
+    if (gView === "map") return out + pathMap();
     var cur = null;
     GR.forEach(function (t) {
       if (t.cefr !== cur) {
@@ -1709,7 +1770,7 @@
     $("#zenBtn").hidden = !(sec === "grammar" && p[1] && !p[2]); // Zen chỉ có ở trang bài học
     if (sec === "") { html = viewDashboard(); binder = bindDashboard; }
     else if (sec === "grammar") {
-      if (!p[1]) html = viewGrammarList();
+      if (!p[1]) { html = viewGrammarList(); binder = bindGrammarList; }
       else if (p[1] === "mix") html = viewGrammarMix(p[2]);
       else if (p[2] === "quiz") html = viewGrammarQuiz(p[1], p[3]);
       else if (p[2] === "order") html = viewGrammarOrder(p[1]);

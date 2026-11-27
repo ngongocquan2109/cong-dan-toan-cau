@@ -7,7 +7,7 @@
   --good: #2f9e5b; --bad: #d64545; --warn: #c98a12;
   --shadow: 0 10px 30px rgba(40, 70, 120, .12);
   --line: rgba(20, 30, 50, .10);
-  --chip: rgba(20, 30, 50, .07);
+  --chip: rgba(20, 30, 50, .07); --pmfill: #fff;
 }
 [data-theme="dark"] {
   --bg1: #0b0f16; --bg2: #141b2b;
@@ -17,7 +17,7 @@
   --good: #46c47b; --bad: #ef6b6b; --warn: #e0a93a;
   --shadow: 0 10px 30px rgba(0, 0, 0, .45);
   --line: rgba(255, 255, 255, .10);
-  --chip: rgba(255, 255, 255, .08);
+  --chip: rgba(255, 255, 255, .08); --pmfill: #1b2230;
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; }
@@ -503,3 +503,29 @@ select.pselect.wrong { border-color: var(--bad); background: rgba(214, 69, 69, .
 .lsfab { position: fixed; right: 18px; bottom: 18px; z-index: 45; border: 0; border-radius: 999px; padding: 12px 20px; font: inherit; font-weight: 600; background: var(--lime); color: #1b2a00; box-shadow: var(--shadow); cursor: pointer; }
 @media (max-width: 760px) { .lsfab { right: 12px; bottom: calc(104px + env(safe-area-inset-bottom)); } }
 body.insession .lsfab { display: none; }
+
+/* Bản đồ lộ trình (V4) */
+.gvtog { margin-top: 16px; display: flex; justify-content: center; }
+.pmap { margin-top: 12px; padding: 12px 8px 8px; overflow: hidden; max-width: 560px; margin-left: auto; margin-right: auto; }
+.pmlegend { display: flex; flex-wrap: wrap; gap: 6px 14px; justify-content: center; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+.pmlegend .lg { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; border: 2px solid var(--steel); background: var(--pmfill); }
+.pmlegend .lg.warn { background: var(--warn); border-color: var(--warn); }
+.pmlegend .lg.good { background: var(--good); border-color: var(--good); }
+.pmsvg { display: block; width: 100%; height: auto; }
+.pmpath { fill: none; stroke: var(--steel); stroke-width: 3; stroke-dasharray: 2 9; stroke-linecap: round; opacity: .7; }
+.pmband rect { fill: var(--dark2); }
+.pmband text { fill: #fff; font-size: 12.5px; font-weight: 700; }
+.pmnode { cursor: pointer; outline: none; }
+.pmdot { fill: var(--pmfill); stroke: var(--steel); stroke-width: 2.5; transition: transform .15s; transform-box: fill-box; transform-origin: center; }
+.pmnode:hover .pmdot, .pmnode:focus-visible .pmdot { transform: scale(1.1); stroke: var(--lime2); }
+.pmnum { font-size: 14px; font-weight: 700; fill: var(--muted); pointer-events: none; }
+.pmlbl { font-size: 12.5px; font-weight: 600; fill: var(--text); pointer-events: none; }
+.pmsub { font-size: 11px; font-weight: 500; fill: var(--muted); }
+.pmnode.st-warn .pmdot { fill: var(--warn); stroke: var(--warn); }
+.pmnode.st-good .pmdot { fill: var(--good); stroke: var(--good); }
+.pmnode.st-warn .pmnum, .pmnode.st-good .pmnum { fill: #0b1a10; }
+.pmnode.next .pmdot { stroke: var(--lime2); stroke-width: 4; animation: glow 2s ease-in-out infinite; }
+.pmnode.next .pmsub { fill: var(--text); font-weight: 700; }
+.pmring { fill: none; stroke: var(--lime); stroke-width: 3; opacity: .55; animation: pmpulse 2s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes glow { 0%, 100% { filter: drop-shadow(0 0 2px var(--lime2)); } 50% { filter: drop-shadow(0 0 10px var(--lime)); } }
+@keyframes pmpulse { 0%, 100% { transform: scale(.92); opacity: .75; } 50% { transform: scale(1.12); opacity: .2; } }
