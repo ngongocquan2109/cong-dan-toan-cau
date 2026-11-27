@@ -4,7 +4,7 @@
   "use strict";
 
   /* ---------- Tiện ích ---------- */
-  var APP_VERSION = "v29"; // đổi cùng CACHE trong sw.js và ?v= trong index.html mỗi lần phát hành
+  var APP_VERSION = "v30"; // đổi cùng CACHE trong sw.js và ?v= trong index.html mỗi lần phát hành
   var KEY = "nrcdtc.v1";
   var INTERVALS = [0, 1, 3, 7, 14, 30]; // số ngày chờ theo "hộp" (spaced repetition)
   var $ = function (s, r) { return (r || document).querySelector(s); };
@@ -1283,6 +1283,11 @@
     var open = function (on) { panel.hidden = !on; btn.setAttribute("aria-expanded", on); if (on) { $("#noteQ").focus(); } };
     btn.addEventListener("click", function () { open(panel.hidden); });
     $("#noteClose").addEventListener("click", function () { open(false); btn.focus(); });
+    document.addEventListener("pointerdown", function (e) { // điện thoại: chạm ra ngoài khung thì đóng Sổ tay
+      if (panel.hidden || !window.matchMedia("(max-width: 760px)").matches) return;
+      if (panel.contains(e.target) || btn.contains(e.target)) return;
+      open(false);
+    });
     document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !panel.hidden) open(false); });
     $("#noteTa").addEventListener("input", function (e) { clearTimeout(timer); var v = e.target.value; timer = setTimeout(function () { S.notes = v; save(); }, 400); });
     $("#noteQ").addEventListener("input", function (e) {

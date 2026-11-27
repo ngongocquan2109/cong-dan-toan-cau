@@ -40,7 +40,9 @@ p { margin: 0; }
 /* Header + pill nav */
 .top {
   display: flex; align-items: center; gap: 16px; justify-content: space-between;
-  max-width: 1180px; margin: 0 auto; padding: 18px 20px 6px;
+  margin: 0; padding: 12px max(20px, calc((100% - 1180px) / 2)) 10px;
+  position: sticky; top: 0; z-index: 50;
+  background: var(--bg1); /* không dùng backdrop-filter: nó làm nav fixed bên trong bị kẹt theo header */
 }
 .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; }
 .logo { width: 30px; height: 30px; color: var(--text); }
@@ -326,7 +328,7 @@ body.zen main { padding-bottom: 80px; }
 
 /* Điện thoại: thanh điều hướng xuống đáy */
 @media (max-width: 760px) {
-  .top { padding: 14px 16px 4px; }
+  .top { padding: 10px 16px 8px; }
   .brandtext small { display: none; }
   .pillnav {
     position: fixed; bottom: calc(30px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); z-index: 40;
